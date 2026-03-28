@@ -53,6 +53,12 @@ android {
     buildFeatures {
         compose = true
     }
+
+    sourceSets {
+        getByName("main") {
+            assets.srcDir("../third_party/DasherCore/Data")
+        }
+    }
 }
 
 dependencies {

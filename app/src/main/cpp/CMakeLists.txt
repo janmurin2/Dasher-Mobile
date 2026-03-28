@@ -23,8 +23,10 @@ add_library(dasher_jni SHARED
 )
 
 find_library(log-lib log)
+find_library(android-lib android)
 
 target_link_libraries(dasher_jni
     DasherCore
+    ${android-lib}
     ${log-lib}
 )

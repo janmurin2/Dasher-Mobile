@@ -1,5 +1,7 @@
 package com.janmurin.dashermobile
 
+import android.content.res.AssetManager
+
 class NativeBridge {
     companion object {
         init {
@@ -9,7 +11,9 @@ class NativeBridge {
         @JvmStatic external fun nativeVersion(): String
         @JvmStatic external fun nativeCreate(filesDir: String): Long
         @JvmStatic external fun nativeDestroy(handle: Long)
+        @JvmStatic external fun nativeSetAssetManager(handle: Long, assetManager: AssetManager)
         @JvmStatic external fun nativeSetScreenSize(handle: Long, width: Int, height: Int)
-        @JvmStatic external fun nativeFrame(handle: Long, timeMs: Long)
+        @JvmStatic external fun nativeTouch(handle: Long, action: Int, x: Float, y: Float)
+        @JvmStatic external fun nativeFrame(handle: Long, timeMs: Long): IntArray
     }
 }
