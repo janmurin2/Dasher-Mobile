@@ -258,4 +258,51 @@ Java_com_janmurin_dashermobile_NativeBridge_nativeFrame(JNIEnv *env,
     return toJIntArray(env, commands);
 }
 
+JNIEXPORT jobjectArray JNICALL
+Java_com_janmurin_dashermobile_NativeBridge_nativeGetFrameStrings(JNIEnv *env,
+                                                                    jclass,
+                                                                    jlong handle) {
+    jclass strClass = env->FindClass("java/lang/String");
+    auto *session = fromHandle(handle);
+    if (!session || !session->iface) {
+        return env->NewObjectArray(0, strClass, nullptr);
+    }
+    const auto strings = session->iface->TakeFrameStrings();
+
+    static int s_logCounter = 0;
+    if (++s_logCounter % 120 == 0) {
+        __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, "frameStrings count=%zu", strings.size());
+    }
+
+    auto arr = env->NewObjectArray(static_cast<jsize>(strings.size()), strClass, nullptr);
+    for (jsize i = 0; i < static_cast<jsize>(strings.size()); ++i) {
+        jstring jstr = env->NewStringUTF(strings[i].c_str());
+        env->SetObjectArrayElement(arr, i, jstr);
+        env->DeleteLocalRef(jstr);
+    }
+    return arr;
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_janmurin_dashermobile_NativeBridge_nativeGetOutputText(JNIEnv *env,
+                                                                  jclass,
+                                                                  jlong handle) {
+    auto *session = fromHandle(handle);
+    if (!session || !session->iface) {
+        return env->NewStringUTF("");
+    }
+    return env->NewStringUTF(session->iface->GetOutputText().c_str());
+}
+
+JNIEXPORT void JNICALL
+Java_com_janmurin_dashermobile_NativeBridge_nativeResetOutputText(JNIEnv *,
+                                                                    jclass,
+                                                                    jlong handle) {
+    auto *session = fromHandle(handle);
+    if (!session || !session->iface) {
+        return;
+    }
+    session->iface->ResetOutputText();
+}
+
 }

@@ -99,11 +99,16 @@ public:
 
     void BeginFrame() {
         m_commands.clear();
+        m_strings.clear();
         push(0, 0, 0, 0, 0, static_cast<int32_t>(0xFF0D1117));
     }
 
     std::vector<int32_t> TakeCommands() {
         return std::move(m_commands);
+    }
+
+    std::vector<std::string> TakeStrings() {
+        return std::move(m_strings);
     }
 
     std::pair<Dasher::screenint, Dasher::screenint> TextSize(Label *label, unsigned int iFontSize) override {
@@ -113,7 +118,24 @@ public:
         return {static_cast<Dasher::screenint>(width), static_cast<Dasher::screenint>(height)};
     }
 
-    void DrawString(Label *, Dasher::screenint, Dasher::screenint, unsigned int, const Dasher::ColorPalette::Color &) override {}
+    void DrawString(Label *label,
+                    Dasher::screenint x,
+                    Dasher::screenint y,
+                    unsigned int iFontSize,
+                    const Dasher::ColorPalette::Color &color) override {
+        if (!label || label->m_strText.empty() || iFontSize == 0) return;
+        const int idx = static_cast<int>(m_strings.size());
+        m_strings.push_back(label->m_strText);
+        push(5, static_cast<int>(x), static_cast<int>(y), static_cast<int>(iFontSize), idx, toArgb(color));
+
+        static int s_logCounter = 0;
+        if (++s_logCounter % 360 == 0) {
+            __android_log_print(ANDROID_LOG_DEBUG, "DasherInterface",
+                                "DrawString: \"%s\" x=%d y=%d size=%u",
+                                label->m_strText.c_str(),
+                                static_cast<int>(x), static_cast<int>(y), iFontSize);
+        }
+    }
 
     void DrawRectangle(Dasher::screenint x1,
                        Dasher::screenint y1,
@@ -185,6 +207,7 @@ private:
     }
 
     std::vector<int32_t> m_commands;
+    std::vector<std::string> m_strings;
 };
 
 namespace {
@@ -241,6 +264,8 @@ void AndroidDasherInterface::SetScreenSize(int width, int height) {
     if (!m_realized) {
         Realize(nowMs());
         m_realized = true;
+        __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "alphabetID=%s",
+                            GetStringParameter(Dasher::SP_ALPHABET_ID).c_str());
     }
 
     if (m_input) {
@@ -269,6 +294,11 @@ std::vector<int32_t> AndroidDasherInterface::Frame(long timeMs) {
     m_screen->BeginFrame();
     CallNewFrame(static_cast<unsigned long>(std::max(0L, timeMs)), false);
     return m_screen->TakeCommands();
+}
+
+std::vector<std::string> AndroidDasherInterface::TakeFrameStrings() {
+    if (!m_screen) return {};
+    return m_screen->TakeStrings();
 }
 
 unsigned int AndroidDasherInterface::ctrlMove(bool, Dasher::EditDistance) {
@@ -303,3 +333,12 @@ std::string AndroidDasherInterface::GetAllContext() {
 int AndroidDasherInterface::GetAllContextLenght() {
     return static_cast<int>(m_editBuffer.size());
 }
+
+std::string AndroidDasherInterface::GetOutputText() const {
+    return m_editBuffer;
+}
+
+void AndroidDasherInterface::ResetOutputText() {
+    m_editBuffer.clear();
+}
+

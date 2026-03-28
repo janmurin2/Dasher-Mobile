@@ -15,5 +15,8 @@ class NativeBridge {
         @JvmStatic external fun nativeSetScreenSize(handle: Long, width: Int, height: Int)
         @JvmStatic external fun nativeTouch(handle: Long, action: Int, x: Float, y: Float)
         @JvmStatic external fun nativeFrame(handle: Long, timeMs: Long): IntArray
+        @JvmStatic external fun nativeGetFrameStrings(handle: Long): Array<String>
+        @JvmStatic external fun nativeGetOutputText(handle: Long): String
+        @JvmStatic external fun nativeResetOutputText(handle: Long)
     }
 }

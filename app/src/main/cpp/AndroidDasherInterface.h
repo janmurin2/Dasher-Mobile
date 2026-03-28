@@ -28,6 +28,7 @@ public:
     void SetScreenSize(int width, int height);
     void SetTouch(int action, float x, float y);
     std::vector<int32_t> Frame(long timeMs);
+    std::vector<std::string> TakeFrameStrings();
 
     unsigned int ctrlMove(bool bForwards, Dasher::EditDistance dist) override;
     unsigned int ctrlDelete(bool bForwards, Dasher::EditDistance dist) override;
@@ -37,6 +38,9 @@ public:
     std::string GetContext(unsigned int iStart, unsigned int iLength) override;
     std::string GetAllContext() override;
     int GetAllContextLenght() override;
+
+    std::string GetOutputText() const;
+    void ResetOutputText();
 
 protected:
     void CreateModules() override;

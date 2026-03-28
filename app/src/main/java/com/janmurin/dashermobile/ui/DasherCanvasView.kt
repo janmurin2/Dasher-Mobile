@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Typeface
 import android.util.Log
 import android.util.AttributeSet
 import android.view.MotionEvent
@@ -25,14 +26,22 @@ class DasherCanvasView @JvmOverloads constructor(
         strokeWidth = 4f
     }
 
+    private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        textAlign = Paint.Align.LEFT
+        typeface = Typeface.DEFAULT_BOLD
+    }
+
     private var commands: IntArray = IntArray(0)
+    private var strings: Array<String> = emptyArray()
     private var drawCount = 0
 
     var onSurfaceSizeChanged: ((Int, Int) -> Unit)? = null
     var onTouchInput: ((Int, Float, Float) -> Unit)? = null
 
-    fun submitFrame(frameCommands: IntArray) {
+    fun submitFrame(frameCommands: IntArray, frameStrings: Array<String> = emptyArray()) {
         commands = frameCommands
+        strings = frameStrings
         postInvalidateOnAnimation()
     }
 
@@ -66,7 +75,6 @@ class DasherCanvasView @JvmOverloads constructor(
             val a = data[k + 1]
             val b = data[k + 2]
             val c = data[k + 3]
-            val d = data[k + 4]
             when (op) {
                 1 -> {
                     minX = min(minX, a - c)
@@ -77,8 +85,8 @@ class DasherCanvasView @JvmOverloads constructor(
                 2, 3, 4 -> {
                     minX = min(minX, min(a, c))
                     maxX = max(maxX, max(a, c))
-                    minY = min(minY, min(b, d))
-                    maxY = max(maxY, max(b, d))
+                    minY = min(minY, min(b, data[k + 4]))
+                    maxY = max(maxY, max(b, data[k + 4]))
                 }
             }
             k += 6
@@ -100,9 +108,11 @@ class DasherCanvasView @JvmOverloads constructor(
         fun mapY(value: Int): Float = if (normalize) (value.toFloat() + ty) * sy else value.toFloat()
         fun mapR(value: Int): Float {
             if (!normalize) return value.toFloat()
-            val avg = (sx + sy) * 0.5f
-            return value * avg
+            return value * (sx + sy) * 0.5f
         }
+
+        val localStrings = strings
+        var textOpCount = 0
 
         var i = 0
         while (i + 5 < data.size) {
@@ -140,6 +150,19 @@ class DasherCanvasView @JvmOverloads constructor(
                     val btm = max(mapY(b), mapY(d))
                     canvas.drawRect(l, t, r, btm, fillPaint)
                 }
+                5 -> {
+                    val strIdx = d
+                    if (strIdx in localStrings.indices) {
+                        val fs = mapR(c).coerceAtLeast(6f)
+                        textPaint.textSize = fs
+                        textPaint.color = color
+                        val fm = textPaint.fontMetrics
+                        canvas.drawText(localStrings[strIdx], mapX(a), mapY(b) - fm.top, textPaint)
+                        textOpCount++
+                    } else {
+                        Log.w("DasherCanvasView", "String index out of bounds: $strIdx")
+                    }
+                }
                 else -> Unit
             }
             i += 6
@@ -148,7 +171,7 @@ class DasherCanvasView @JvmOverloads constructor(
         drawCount += 1
         if (drawCount % 120 == 0) {
             val firstOp = data[0]
-            Log.d("DasherRender", "cmds=${data.size / 6} firstOp=$firstOp bounds=[$minX,$minY]-[$maxX,$maxY] normalize=$normalize")
+            Log.d("DasherRender", "cmds=${data.size / 6} textOps=$textOpCount strings=${localStrings.size} firstOp=$firstOp bounds=[$minX,$minY]-[$maxX,$maxY] normalize=$normalize")
         }
     }
 

@@ -8,6 +8,7 @@ import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.Switch
+import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import com.janmurin.dashermobile.ui.DasherCanvasView
@@ -29,8 +30,22 @@ class MainActivity : ComponentActivity() {
         nativeHandle = NativeBridge.nativeCreate(filesDir.absolutePath)
         canvasView = DasherCanvasView(this)
 
-        val root = FrameLayout(this)
-        root.addView(
+        val textView = TextView(this).apply {
+            text = ""
+            textSize = 18f
+            setTextColor(0xFFFFFFFF.toInt())
+            setBackgroundColor(0xCC000000.toInt())
+            val p = (8 * resources.displayMetrics.density).toInt()
+            val pv = (6 * resources.displayMetrics.density).toInt()
+            setPadding(p, pv, p, pv)
+            setSingleLine(false)
+            maxLines = 3
+        }
+
+        val textBoxHeight = (72 * resources.displayMetrics.density).toInt()
+
+        val canvasFrame = FrameLayout(this)
+        canvasFrame.addView(
             canvasView,
             FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -41,8 +56,8 @@ class MainActivity : ComponentActivity() {
         val controls = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            val padding = (12 * resources.displayMetrics.density).toInt()
-            setPadding(padding, padding, padding, padding)
+            val p = (12 * resources.displayMetrics.density).toInt()
+            setPadding(p, p, p, p)
         }
         val modeSwitch = Switch(this).apply {
             text = getString(R.string.tilt_mode)
@@ -52,15 +67,33 @@ class MainActivity : ComponentActivity() {
             text = getString(R.string.calibrate)
             isEnabled = false
         }
-
         controls.addView(modeSwitch)
         controls.addView(calibrateButton)
-        root.addView(
+        canvasFrame.addView(
             controls,
             FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 Gravity.TOP or Gravity.END
+            )
+        )
+
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        root.addView(
+            textView,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                textBoxHeight
+            )
+        )
+        root.addView(
+            canvasFrame,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                0,
+                1f
             )
         )
 
@@ -70,8 +103,8 @@ class MainActivity : ComponentActivity() {
         if (nativeHandle != 0L) {
             NativeBridge.nativeSetAssetManager(nativeHandle, assets)
 
-            val localEngine = DasherEngine(nativeHandle) { commands ->
-                canvasView.submitFrame(commands)
+            val localEngine = DasherEngine(nativeHandle) { commands, strings ->
+                canvasView.submitFrame(commands, strings)
             }
             engine = localEngine
 
@@ -89,6 +122,14 @@ class MainActivity : ComponentActivity() {
             }
             canvasView.onTouchInput = { action, x, y ->
                 localEngine.onTouch(action, x, y)
+            }
+
+            localEngine.onTextUpdate = { text ->
+                textView.text = text
+            }
+
+            textView.setOnClickListener {
+                localEngine.resetOutputText()
             }
 
             modeSwitch.setOnCheckedChangeListener { _, checked ->

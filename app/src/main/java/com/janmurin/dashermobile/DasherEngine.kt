@@ -9,7 +9,7 @@ enum class InputMode {
 
 class DasherEngine(
     private val nativeHandle: Long,
-    private val frameConsumer: (IntArray) -> Unit
+    private val frameConsumer: (IntArray, Array<String>) -> Unit
 ) : Choreographer.FrameCallback {
 
     private val choreographer = Choreographer.getInstance()
@@ -20,6 +20,8 @@ class DasherEngine(
     private var surfaceHeight = 0
     private var inputMode = InputMode.TOUCH
     private var tiltActive = false
+
+    var onTextUpdate: ((String) -> Unit)? = null
 
     fun setInputMode(mode: InputMode) {
         if (destroyed || nativeHandle == 0L || inputMode == mode) return
@@ -91,11 +93,18 @@ class DasherEngine(
         if (!destroyed && nativeHandle != 0L && hasSurface) {
             val frameTimeMs = frameTimeNanos / 1_000_000L
             val commands = NativeBridge.nativeFrame(nativeHandle, frameTimeMs)
-            frameConsumer(commands)
+            val strings = NativeBridge.nativeGetFrameStrings(nativeHandle)
+            frameConsumer(commands, strings)
+            onTextUpdate?.invoke(NativeBridge.nativeGetOutputText(nativeHandle))
         }
         if (running) {
             choreographer.postFrameCallback(this)
         }
+    }
+
+    fun resetOutputText() {
+        if (destroyed || nativeHandle == 0L) return
+        NativeBridge.nativeResetOutputText(nativeHandle)
     }
 
     private fun currentX(): Float = surfaceWidth * 0.5f
