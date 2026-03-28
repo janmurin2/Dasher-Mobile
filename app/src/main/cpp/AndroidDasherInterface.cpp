@@ -206,6 +206,10 @@ AndroidDasherInterface::AndroidDasherInterface(const std::string &filesDir)
     , Dasher::CDashIntfScreenMsgs(AndroidSettingsHolder::settings.get())
 {
     __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "created (filesDir=%s)", filesDir.c_str());
+    __android_log_print(ANDROID_LOG_INFO,
+                        LOG_TAG,
+                        "inputFilter=%s",
+                        GetStringParameter(Dasher::SP_INPUT_FILTER).c_str());
 }
 
 AndroidDasherInterface::~AndroidDasherInterface() = default;
@@ -250,11 +254,10 @@ void AndroidDasherInterface::SetTouch(int action, float x, float y) {
     }
     m_input->SetTouch(action, x, y);
 
-    const unsigned long timeMs = nowMs();
-    if (action == 0) {
-        KeyDown(timeMs, Dasher::Keys::Primary_Input);
-    } else if (action == 2) {
-        KeyUp(timeMs, Dasher::Keys::Primary_Input);
+    if (action == 0 && !m_startedByTouch) {
+        SetBoolParameter(Dasher::BP_START_MOUSE, true);
+        KeyDown(nowMs(), Dasher::Keys::Primary_Input);
+        m_startedByTouch = true;
     }
 }
 

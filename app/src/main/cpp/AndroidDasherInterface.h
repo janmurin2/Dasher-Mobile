@@ -46,4 +46,5 @@ private:
     std::unique_ptr<AndroidCommandScreen> m_screen;
     AndroidPointerInput *m_input = nullptr;
     bool m_realized = false;
+    bool m_startedByTouch = false;
 };
