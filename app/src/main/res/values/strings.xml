@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Dasher Mobile</string>
+    <string name="tilt_mode">Tilt mode</string>
+    <string name="calibrate">Calibrate</string>
 </resources>
