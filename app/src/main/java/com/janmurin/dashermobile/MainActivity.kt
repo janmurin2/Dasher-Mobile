@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.Gravity
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
@@ -20,6 +21,15 @@ class MainActivity : ComponentActivity() {
     private lateinit var canvasView: DasherCanvasView
     private var tiltProvider: TiltInputProvider? = null
     private var isResumed = false
+    private var suppressModeSwitchCallback = false
+
+    private fun updateKeepScreenOn(mode: InputMode) {
+        if (mode == InputMode.TILT) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,9 +66,10 @@ class MainActivity : ComponentActivity() {
         val controls = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            val p = (12 * resources.displayMetrics.density).toInt()
+            val p = (8 * resources.displayMetrics.density).toInt()
             setPadding(p, p, p, p)
         }
+
         val modeSwitch = Switch(this).apply {
             text = getString(R.string.tilt_mode)
             isChecked = false
@@ -67,6 +78,16 @@ class MainActivity : ComponentActivity() {
             text = getString(R.string.calibrate)
             isEnabled = false
         }
+        val statusView = TextView(this).apply {
+            text = "TOUCH | PAUSED"
+            textSize = 11f
+            setTextColor(0xFFFFFFFF.toInt())
+            setBackgroundColor(0xAA000000.toInt())
+            val p = (6 * resources.displayMetrics.density).toInt()
+            setPadding(p, p, p, p)
+        }
+
+        controls.addView(statusView)
         controls.addView(modeSwitch)
         controls.addView(calibrateButton)
         canvasFrame.addView(
@@ -83,18 +104,11 @@ class MainActivity : ComponentActivity() {
         }
         root.addView(
             textView,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                textBoxHeight
-            )
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, textBoxHeight)
         )
         root.addView(
             canvasFrame,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                0,
-                1f
-            )
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
         )
 
         setContentView(root)
@@ -128,26 +142,54 @@ class MainActivity : ComponentActivity() {
                 textView.text = text
             }
 
+            localEngine.onStatusUpdate = { mode, paused ->
+                val modeLabel = if (mode == InputMode.TILT) "TILT" else "TOUCH"
+                val stateLabel = if (paused) "PAUSED" else "RUNNING"
+                statusView.text = "$modeLabel | $stateLabel"
+                updateKeepScreenOn(mode)
+                val switchChecked = mode == InputMode.TILT
+                if (modeSwitch.isChecked != switchChecked) {
+                    suppressModeSwitchCallback = true
+                    modeSwitch.isChecked = switchChecked
+                    suppressModeSwitchCallback = false
+                }
+                calibrateButton.isEnabled = switchChecked
+                if (mode == InputMode.TILT && isResumed) {
+                    if (!paused) tiltProvider?.register() else tiltProvider?.unregister()
+                }
+            }
+
             textView.setOnClickListener {
                 localEngine.resetOutputText()
             }
 
             modeSwitch.setOnCheckedChangeListener { _, checked ->
+                if (suppressModeSwitchCallback) {
+                    return@setOnCheckedChangeListener
+                }
                 if (!tiltAvailable && checked) {
+                    suppressModeSwitchCallback = true
                     modeSwitch.isChecked = false
+                    suppressModeSwitchCallback = false
                     return@setOnCheckedChangeListener
                 }
                 val mode = if (checked) InputMode.TILT else InputMode.TOUCH
-                localEngine.setInputMode(mode)
-                calibrateButton.isEnabled = checked
-                if (checked) {
-                    tiltProvider?.calibrate()
-                    if (isResumed) {
-                        tiltProvider?.register()
+                val switched = localEngine.setInputMode(mode)
+                if (!switched) {
+                    val actualChecked = localEngine.getInputMode() == InputMode.TILT
+                    if (modeSwitch.isChecked != actualChecked) {
+                        suppressModeSwitchCallback = true
+                        modeSwitch.isChecked = actualChecked
+                        suppressModeSwitchCallback = false
                     }
-                } else {
+                    return@setOnCheckedChangeListener
+                }
+                calibrateButton.isEnabled = localEngine.getInputMode() == InputMode.TILT
+                if (!checked) {
                     tiltProvider?.unregister()
                     localEngine.clearTiltInput()
+                } else {
+                    tiltProvider?.calibrate()
                 }
             }
 
@@ -166,8 +208,9 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         isResumed = true
+        updateKeepScreenOn(engine?.getInputMode() ?: InputMode.TOUCH)
         engine?.start()
-        if (engine?.getInputMode() == InputMode.TILT) {
+        if (engine?.getInputMode() == InputMode.TILT && engine?.isPaused() == false) {
             tiltProvider?.register()
         }
     }
@@ -177,6 +220,7 @@ class MainActivity : ComponentActivity() {
         engine?.clearTiltInput()
         engine?.stop()
         isResumed = false
+        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         super.onPause()
     }
 

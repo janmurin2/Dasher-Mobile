@@ -52,7 +52,11 @@ bool parseAsset(AbstractParser *parser, const std::string &assetPath) {
     if (read <= 0) return false;
 
     std::istringstream stream(data);
-    return parser->Parse(assetPath, stream, false);
+    const bool ok = parser->Parse(assetPath, stream, false);
+    if (ok) {
+        __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, "parsed asset: %s (%d bytes)", assetPath.c_str(), read);
+    }
+    return ok;
 }
 
 void scanAssetDir(AbstractParser *parser,
@@ -96,6 +100,8 @@ int Dasher::FileUtils::GetFileSize(const std::string &strFileName) {
 void Dasher::FileUtils::ScanFiles(AbstractParser *parser, const std::string &strPattern) {
     if (!parser) return;
 
+    __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, "ScanFiles: pattern=%s", strPattern.c_str());
+
     std::ifstream local(resolvePath(strPattern), std::ios::binary);
     if (local.is_open()) {
         local.close();
@@ -108,6 +114,7 @@ void Dasher::FileUtils::ScanFiles(AbstractParser *parser, const std::string &str
     scanAssetDir(parser, "alphabets", pattern);
     scanAssetDir(parser, "colors", pattern);
     scanAssetDir(parser, "settings", pattern);
+    scanAssetDir(parser, "training", pattern);
 }
 
 bool Dasher::FileUtils::WriteUserDataFile(const std::string &filename,
