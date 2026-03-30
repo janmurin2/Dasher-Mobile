@@ -18,5 +18,7 @@ class NativeBridge {
         @JvmStatic external fun nativeGetFrameStrings(handle: Long): Array<String>
         @JvmStatic external fun nativeGetOutputText(handle: Long): String
         @JvmStatic external fun nativeResetOutputText(handle: Long)
+        @JvmStatic external fun nativeGetLanguageModelId(handle: Long): Int
+        @JvmStatic external fun nativeSetLanguageModelId(handle: Long, modelId: Int)
     }
 }

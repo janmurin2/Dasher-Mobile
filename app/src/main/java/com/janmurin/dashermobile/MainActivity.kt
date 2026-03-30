@@ -5,9 +5,12 @@ import android.util.Log
 import android.view.Gravity
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.widget.Spinner
 import android.widget.Switch
 import android.widget.TextView
 import androidx.activity.ComponentActivity
@@ -22,6 +25,7 @@ class MainActivity : ComponentActivity() {
     private var tiltProvider: TiltInputProvider? = null
     private var isResumed = false
     private var suppressModeSwitchCallback = false
+    private var suppressLanguageModelCallback = false
 
     private fun updateKeepScreenOn(mode: InputMode) {
         if (mode == InputMode.TILT) {
@@ -78,6 +82,22 @@ class MainActivity : ComponentActivity() {
             text = getString(R.string.calibrate)
             isEnabled = false
         }
+        val languageLabel = TextView(this).apply {
+            text = getString(R.string.language_model)
+            setTextColor(0xFFFFFFFF.toInt())
+        }
+        val languageModels = listOf(LanguageModel.PPM, LanguageModel.WORD)
+        val languageModelSpinner = Spinner(this)
+        val languageModelAdapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_item,
+            languageModels.map {
+                if (it == LanguageModel.WORD) getString(R.string.language_model_word) else getString(R.string.language_model_ppm)
+            }
+        ).apply {
+            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        }
+        languageModelSpinner.adapter = languageModelAdapter
         val statusView = TextView(this).apply {
             text = "TOUCH | PAUSED"
             textSize = 11f
@@ -90,6 +110,8 @@ class MainActivity : ComponentActivity() {
         controls.addView(statusView)
         controls.addView(modeSwitch)
         controls.addView(calibrateButton)
+        controls.addView(languageLabel)
+        controls.addView(languageModelSpinner)
         canvasFrame.addView(
             controls,
             FrameLayout.LayoutParams(
@@ -147,6 +169,7 @@ class MainActivity : ComponentActivity() {
                 val stateLabel = if (paused) "PAUSED" else "RUNNING"
                 statusView.text = "$modeLabel | $stateLabel"
                 updateKeepScreenOn(mode)
+                languageModelSpinner.isEnabled = paused
                 val switchChecked = mode == InputMode.TILT
                 if (modeSwitch.isChecked != switchChecked) {
                     suppressModeSwitchCallback = true
@@ -191,6 +214,29 @@ class MainActivity : ComponentActivity() {
                 } else {
                     tiltProvider?.calibrate()
                 }
+            }
+
+            val currentLanguageModel = localEngine.getLanguageModel()
+            val initialIndex = if (currentLanguageModel == LanguageModel.WORD) 1 else 0
+            suppressLanguageModelCallback = true
+            languageModelSpinner.setSelection(initialIndex, false)
+            suppressLanguageModelCallback = false
+
+            languageModelSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(parent: AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
+                    if (suppressLanguageModelCallback) return
+                    val selectedModel = languageModels[position]
+                    val switched = localEngine.setLanguageModel(selectedModel)
+                    if (!switched) {
+                        val actualModel = localEngine.getLanguageModel()
+                        val actualIndex = if (actualModel == LanguageModel.WORD) 1 else 0
+                        suppressLanguageModelCallback = true
+                        languageModelSpinner.setSelection(actualIndex, false)
+                        suppressLanguageModelCallback = false
+                    }
+                }
+
+                override fun onNothingSelected(parent: AdapterView<*>?) = Unit
             }
 
             calibrateButton.setOnClickListener {

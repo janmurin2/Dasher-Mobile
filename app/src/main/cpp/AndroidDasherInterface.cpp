@@ -283,6 +283,9 @@ void AndroidDasherInterface::SetTouch(int action, float x, float y) {
         SetBoolParameter(Dasher::BP_START_MOUSE, true);
         KeyDown(nowMs(), Dasher::Keys::Primary_Input);
         m_startedByTouch = true;
+    } else if (action == 2 && m_startedByTouch) {
+        KeyUp(nowMs(), Dasher::Keys::Primary_Input);
+        m_startedByTouch = false;
     }
 }
 
@@ -299,6 +302,22 @@ std::vector<int32_t> AndroidDasherInterface::Frame(long timeMs) {
 std::vector<std::string> AndroidDasherInterface::TakeFrameStrings() {
     if (!m_screen) return {};
     return m_screen->TakeStrings();
+}
+
+int AndroidDasherInterface::GetLanguageModelId() const {
+    return static_cast<int>(GetLongParameter(Dasher::LP_LANGUAGE_MODEL_ID));
+}
+
+void AndroidDasherInterface::SetLanguageModelId(int modelId) {
+    const int resolved = (modelId == 2) ? 2 : 0;
+    if (GetLongParameter(Dasher::LP_LANGUAGE_MODEL_ID) == static_cast<long>(resolved)) {
+        return;
+    }
+    if (m_startedByTouch) {
+        KeyUp(nowMs(), Dasher::Keys::Primary_Input);
+        m_startedByTouch = false;
+    }
+    SetLongParameter(Dasher::LP_LANGUAGE_MODEL_ID, static_cast<long>(resolved));
 }
 
 unsigned int AndroidDasherInterface::ctrlMove(bool, Dasher::EditDistance) {

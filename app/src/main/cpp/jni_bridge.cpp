@@ -239,6 +239,29 @@ Java_com_janmurin_dashermobile_NativeBridge_nativeTouch(JNIEnv *,
     session->iface->SetTouch(static_cast<int>(action), static_cast<float>(x), static_cast<float>(y));
 }
 
+JNIEXPORT jint JNICALL
+Java_com_janmurin_dashermobile_NativeBridge_nativeGetLanguageModelId(JNIEnv *,
+                                                                       jclass,
+                                                                       jlong handle) {
+    auto *session = fromHandle(handle);
+    if (!session || !session->iface) {
+        return 0;
+    }
+    return static_cast<jint>(session->iface->GetLanguageModelId());
+}
+
+JNIEXPORT void JNICALL
+Java_com_janmurin_dashermobile_NativeBridge_nativeSetLanguageModelId(JNIEnv *,
+                                                                       jclass,
+                                                                       jlong handle,
+                                                                       jint modelId) {
+    auto *session = fromHandle(handle);
+    if (!session || !session->iface) {
+        return;
+    }
+    session->iface->SetLanguageModelId(static_cast<int>(modelId));
+}
+
 JNIEXPORT jintArray JNICALL
 Java_com_janmurin_dashermobile_NativeBridge_nativeFrame(JNIEnv *env,
                                                          jclass,

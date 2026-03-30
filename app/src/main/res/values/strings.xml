@@ -2,4 +2,7 @@
     <string name="app_name">Dasher Mobile</string>
     <string name="tilt_mode">Tilt mode</string>
     <string name="calibrate">Calibrate</string>
+    <string name="language_model">LM</string>
+    <string name="language_model_ppm">PPM</string>
+    <string name="language_model_word">WORD</string>
 </resources>

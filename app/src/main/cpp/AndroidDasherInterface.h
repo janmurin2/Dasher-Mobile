@@ -29,6 +29,8 @@ public:
     void SetTouch(int action, float x, float y);
     std::vector<int32_t> Frame(long timeMs);
     std::vector<std::string> TakeFrameStrings();
+    int GetLanguageModelId() const;
+    void SetLanguageModelId(int modelId);
 
     unsigned int ctrlMove(bool bForwards, Dasher::EditDistance dist) override;
     unsigned int ctrlDelete(bool bForwards, Dasher::EditDistance dist) override;
