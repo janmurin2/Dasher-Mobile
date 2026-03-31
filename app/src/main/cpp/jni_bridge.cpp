@@ -239,6 +239,34 @@ Java_com_janmurin_dashermobile_NativeBridge_nativeTouch(JNIEnv *,
     session->iface->SetTouch(static_cast<int>(action), static_cast<float>(x), static_cast<float>(y));
 }
 
+JNIEXPORT jstring JNICALL
+Java_com_janmurin_dashermobile_NativeBridge_nativeGetAlphabetId(JNIEnv *env,
+                                                                  jclass,
+                                                                  jlong handle) {
+    auto *session = fromHandle(handle);
+    if (!session || !session->iface) {
+        return env->NewStringUTF("");
+    }
+    return env->NewStringUTF(session->iface->GetAlphabetId().c_str());
+}
+
+JNIEXPORT void JNICALL
+Java_com_janmurin_dashermobile_NativeBridge_nativeSetAlphabetId(JNIEnv *env,
+                                                                  jclass,
+                                                                  jlong handle,
+                                                                  jstring alphabetId) {
+    auto *session = fromHandle(handle);
+    if (!session || !session->iface || !alphabetId) {
+        return;
+    }
+    const char *rawAlphabetId = env->GetStringUTFChars(alphabetId, nullptr);
+    if (!rawAlphabetId) {
+        return;
+    }
+    session->iface->SetAlphabetId(rawAlphabetId);
+    env->ReleaseStringUTFChars(alphabetId, rawAlphabetId);
+}
+
 JNIEXPORT jint JNICALL
 Java_com_janmurin_dashermobile_NativeBridge_nativeGetLanguageModelId(JNIEnv *,
                                                                        jclass,

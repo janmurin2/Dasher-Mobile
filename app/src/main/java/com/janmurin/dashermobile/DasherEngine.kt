@@ -17,6 +17,21 @@ enum class LanguageModel(val id: Int) {
     }
 }
 
+enum class DasherLanguage(val alphabetId: String, val preferenceValue: String) {
+    ENGLISH("English with limited punctuation", "en"),
+    SLOVAK("Slovak", "sk");
+
+    companion object {
+        fun fromAlphabetId(alphabetId: String): DasherLanguage {
+            return values().firstOrNull { it.alphabetId == alphabetId } ?: ENGLISH
+        }
+
+        fun fromPreferenceValue(value: String?): DasherLanguage {
+            return values().firstOrNull { it.preferenceValue == value } ?: ENGLISH
+        }
+    }
+}
+
 class DasherEngine(
     private val nativeHandle: Long,
     private val frameConsumer: (IntArray, Array<String>) -> Unit
@@ -195,6 +210,25 @@ class DasherEngine(
     fun resetOutputText() {
         if (destroyed || nativeHandle == 0L) return
         NativeBridge.nativeResetOutputText(nativeHandle)
+    }
+
+    fun getLanguage(): DasherLanguage {
+        if (destroyed || nativeHandle == 0L) return DasherLanguage.ENGLISH
+        return DasherLanguage.fromAlphabetId(NativeBridge.nativeGetAlphabetId(nativeHandle))
+    }
+
+    fun setLanguage(language: DasherLanguage): Boolean {
+        if (destroyed || nativeHandle == 0L) return false
+        if (!isPaused) return false
+        if (NativeBridge.nativeGetAlphabetId(nativeHandle) != language.alphabetId) {
+            NativeBridge.nativeSetAlphabetId(nativeHandle, language.alphabetId)
+        }
+        NativeBridge.nativeResetOutputText(nativeHandle)
+        onTextUpdate?.invoke("")
+        lastRenderableCommands = IntArray(0)
+        lastRenderableStrings = emptyArray()
+        hasBootstrapFrame = false
+        return true
     }
 
     fun getLanguageModel(): LanguageModel {

@@ -29,6 +29,8 @@ public:
     void SetTouch(int action, float x, float y);
     std::vector<int32_t> Frame(long timeMs);
     std::vector<std::string> TakeFrameStrings();
+    std::string GetAlphabetId() const;
+    void SetAlphabetId(const std::string &alphabetId);
     int GetLanguageModelId() const;
     void SetLanguageModelId(int modelId);
 
@@ -53,4 +55,5 @@ private:
     AndroidPointerInput *m_input = nullptr;
     bool m_realized = false;
     bool m_startedByTouch = false;
+    std::string m_pendingAlphabetId;
 };

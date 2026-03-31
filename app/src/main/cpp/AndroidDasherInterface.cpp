@@ -264,6 +264,11 @@ void AndroidDasherInterface::SetScreenSize(int width, int height) {
     if (!m_realized) {
         Realize(nowMs());
         m_realized = true;
+        if (!m_pendingAlphabetId.empty()) {
+            const std::string pendingAlphabet = m_pendingAlphabetId;
+            m_pendingAlphabetId.clear();
+            SetAlphabetId(pendingAlphabet);
+        }
         __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "alphabetID=%s",
                             GetStringParameter(Dasher::SP_ALPHABET_ID).c_str());
     }
@@ -302,6 +307,34 @@ std::vector<int32_t> AndroidDasherInterface::Frame(long timeMs) {
 std::vector<std::string> AndroidDasherInterface::TakeFrameStrings() {
     if (!m_screen) return {};
     return m_screen->TakeStrings();
+}
+
+std::string AndroidDasherInterface::GetAlphabetId() const {
+    return GetStringParameter(Dasher::SP_ALPHABET_ID);
+}
+
+void AndroidDasherInterface::SetAlphabetId(const std::string &alphabetId) {
+    if (alphabetId.empty()) {
+        return;
+    }
+
+    m_editBuffer.clear();
+
+    if (!m_realized) {
+        m_pendingAlphabetId = alphabetId;
+        return;
+    }
+
+    if (GetStringParameter(Dasher::SP_ALPHABET_ID) == alphabetId) {
+        return;
+    }
+
+    if (m_startedByTouch) {
+        KeyUp(nowMs(), Dasher::Keys::Primary_Input);
+        m_startedByTouch = false;
+    }
+
+    SetStringParameter(Dasher::SP_ALPHABET_ID, alphabetId);
 }
 
 int AndroidDasherInterface::GetLanguageModelId() const {

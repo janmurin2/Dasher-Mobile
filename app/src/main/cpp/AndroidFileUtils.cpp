@@ -105,8 +105,13 @@ void Dasher::FileUtils::ScanFiles(AbstractParser *parser, const std::string &str
     std::ifstream local(resolvePath(strPattern), std::ios::binary);
     if (local.is_open()) {
         local.close();
-        parser->ParseFile(resolvePath(strPattern), true);
-        return;
+        const std::string localPath = resolvePath(strPattern);
+        const bool parsedLocal = parser->ParseFile(localPath, true);
+        __android_log_print(ANDROID_LOG_DEBUG,
+                            LOG_TAG,
+                            "parsed local: %s ok=%d",
+                            localPath.c_str(),
+                            parsedLocal ? 1 : 0);
     }
 
     std::regex pattern(strPattern);
