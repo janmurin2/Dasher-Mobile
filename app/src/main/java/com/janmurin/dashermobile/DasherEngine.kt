@@ -34,7 +34,7 @@ enum class DasherLanguage(val alphabetId: String, val preferenceValue: String) {
 
 class DasherEngine(
     private val nativeHandle: Long,
-    private val frameConsumer: (IntArray, Array<String>) -> Unit
+    frameConsumer: (IntArray, Array<String>) -> Unit
 ) : Choreographer.FrameCallback {
 
     private val choreographer = Choreographer.getInstance()
@@ -54,6 +54,9 @@ class DasherEngine(
 
     var onTextUpdate: ((String) -> Unit)? = null
     var onStatusUpdate: ((InputMode, Boolean) -> Unit)? = null
+
+    @Volatile
+    private var frameConsumer: (IntArray, Array<String>) -> Unit = frameConsumer
 
     private fun emitStatus() {
         onStatusUpdate?.invoke(inputMode, isPaused)
@@ -99,6 +102,10 @@ class DasherEngine(
 
     fun getInputMode(): InputMode = inputMode
     fun isPaused(): Boolean = isPaused
+
+    fun requestPause() {
+        pauseInternal()
+    }
 
     fun onSurfaceSizeChanged(width: Int, height: Int) {
         if (destroyed || nativeHandle == 0L || width <= 0 || height <= 0) return
@@ -243,6 +250,10 @@ class DasherEngine(
         NativeBridge.nativeSetLanguageModelId(nativeHandle, model.id)
         hasBootstrapFrame = false
         return true
+    }
+
+    fun setFrameConsumer(consumer: (IntArray, Array<String>) -> Unit) {
+        frameConsumer = consumer
     }
 
     private fun currentX(): Float = surfaceWidth * 0.5f
