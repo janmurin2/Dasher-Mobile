@@ -24,6 +24,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DasherMobile" />
+
         <service
             android:name=".DasherImeService"
             android:exported="true"

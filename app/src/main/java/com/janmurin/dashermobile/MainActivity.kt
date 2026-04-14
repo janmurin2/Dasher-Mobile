@@ -1,11 +1,9 @@
 package com.janmurin.dashermobile
 
-import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.WindowManager
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import com.janmurin.dashermobile.ui.DasherCanvasView
@@ -18,13 +16,6 @@ class MainActivity : ComponentActivity() {
     private var tiltProvider: TiltInputProvider? = null
     private var isResumed = false
     private var suppressModeSwitchCallback = false
-    private var suppressLanguageSwitchCallback = false
-    private var suppressLanguageModelCallback = false
-
-    companion object {
-        private const val PREFS_NAME = "dasher_mobile"
-        private const val PREF_SELECTED_LANGUAGE = "selected_language"
-    }
 
     private fun updateKeepScreenOn(mode: InputMode) {
         if (mode == InputMode.TILT) {
@@ -40,10 +31,7 @@ class MainActivity : ComponentActivity() {
         val version = NativeBridge.nativeVersion()
         Log.i("DasherMobile", "JNI loaded: $version")
 
-        val preferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val restoredLanguage = DasherLanguage.fromPreferenceValue(
-            preferences.getString(PREF_SELECTED_LANGUAGE, DasherLanguage.ENGLISH.preferenceValue)
-        )
+        val restoredLanguage = DasherPrefs.getLanguage(this)
         var pendingStartupLanguage: DasherLanguage? = restoredLanguage
 
         hostHandle = DasherSessionCoordinator.registerHost(filesDir.absolutePath, assets)
@@ -53,33 +41,11 @@ class MainActivity : ComponentActivity() {
         val statusView = hostViews.statusView
         val modeSwitch = requireNotNull(hostViews.modeSwitch)
         val calibrateButton = requireNotNull(hostViews.calibrateButton)
-        val languageSpinner = hostViews.languageSpinner
-        val languageModelSpinner = hostViews.languageModelSpinner
-        val languages = listOf(DasherLanguage.ENGLISH, DasherLanguage.SLOVAK)
-        val languageAdapter = ArrayAdapter(
-            this,
-            android.R.layout.simple_spinner_item,
-            languages.map {
-                if (it == DasherLanguage.SLOVAK) getString(R.string.language_slovak) else getString(R.string.language_english)
-            }
-        ).apply {
-            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        }
-        languageSpinner.adapter = languageAdapter
-
-        val languageModels = listOf(LanguageModel.PPM, LanguageModel.WORD)
-        val languageModelAdapter = ArrayAdapter(
-            this,
-            android.R.layout.simple_spinner_item,
-            languageModels.map {
-                if (it == LanguageModel.WORD) getString(R.string.language_model_word) else getString(R.string.language_model_ppm)
-            }
-        ).apply {
-            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        }
-        languageModelSpinner.adapter = languageModelAdapter
 
         setContentView(hostViews.root)
+        hostViews.settingsButton?.setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
         enableEdgeToEdge()
 
         val localHost = hostHandle
@@ -102,8 +68,6 @@ class MainActivity : ComponentActivity() {
                     val stateLabel = if (paused) "PAUSED" else "RUNNING"
                     statusView.text = "$modeLabel | $stateLabel"
                     updateKeepScreenOn(mode)
-                    languageSpinner.isEnabled = paused
-                    languageModelSpinner.isEnabled = paused
                     val switchChecked = mode == InputMode.TILT
                     if (modeSwitch.isChecked != switchChecked) {
                         suppressModeSwitchCallback = true
@@ -122,7 +86,7 @@ class MainActivity : ComponentActivity() {
                 val startupLanguage = pendingStartupLanguage
                 if (startupLanguage != null && DasherSessionCoordinator.setLanguage(localHost, startupLanguage)) {
                     pendingStartupLanguage = null
-                    preferences.edit().putString(PREF_SELECTED_LANGUAGE, startupLanguage.preferenceValue).apply()
+                    DasherPrefs.setLanguage(this, startupLanguage)
                 }
             }
             canvasView.onTouchInput = { action, x, y ->
@@ -163,55 +127,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            val initialLanguageIndex = if (restoredLanguage == DasherLanguage.SLOVAK) 1 else 0
-            suppressLanguageSwitchCallback = true
-            languageSpinner.setSelection(initialLanguageIndex, false)
-            suppressLanguageSwitchCallback = false
-
-            languageSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-                override fun onItemSelected(parent: AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
-                    if (suppressLanguageSwitchCallback) return
-                    val selectedLanguage = languages[position]
-                    val switched = DasherSessionCoordinator.setLanguage(localHost, selectedLanguage)
-                    if (!switched) {
-                        val actualLanguage = DasherSessionCoordinator.getLanguage()
-                        val actualIndex = if (actualLanguage == DasherLanguage.SLOVAK) 1 else 0
-                        suppressLanguageSwitchCallback = true
-                        languageSpinner.setSelection(actualIndex, false)
-                        suppressLanguageSwitchCallback = false
-                        return
-                    }
-                    pendingStartupLanguage = null
-                    preferences.edit().putString(PREF_SELECTED_LANGUAGE, selectedLanguage.preferenceValue).apply()
-                    textView.text = ""
-                }
-
-                override fun onNothingSelected(parent: AdapterView<*>?) = Unit
-            }
-
-            val currentLanguageModel = DasherSessionCoordinator.getLanguageModel()
-            val initialIndex = if (currentLanguageModel == LanguageModel.WORD) 1 else 0
-            suppressLanguageModelCallback = true
-            languageModelSpinner.setSelection(initialIndex, false)
-            suppressLanguageModelCallback = false
-
-            languageModelSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-                override fun onItemSelected(parent: AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
-                    if (suppressLanguageModelCallback) return
-                    val selectedModel = languageModels[position]
-                    val switched = DasherSessionCoordinator.setLanguageModel(localHost, selectedModel)
-                    if (!switched) {
-                        val actualModel = DasherSessionCoordinator.getLanguageModel()
-                        val actualIndex = if (actualModel == LanguageModel.WORD) 1 else 0
-                        suppressLanguageModelCallback = true
-                        languageModelSpinner.setSelection(actualIndex, false)
-                        suppressLanguageModelCallback = false
-                    }
-                }
-
-                override fun onNothingSelected(parent: AdapterView<*>?) = Unit
-            }
-
             calibrateButton.setOnClickListener {
                 tiltProvider?.calibrate()
             }
@@ -221,15 +136,13 @@ class MainActivity : ComponentActivity() {
                 val startupLanguage = pendingStartupLanguage
                 if (startupLanguage != null && DasherSessionCoordinator.setLanguage(localHost, startupLanguage)) {
                     pendingStartupLanguage = null
-                    preferences.edit().putString(PREF_SELECTED_LANGUAGE, startupLanguage.preferenceValue).apply()
+                    DasherPrefs.setLanguage(this, startupLanguage)
                 }
             }
         } else {
             Log.e("DasherMobile", "Failed to initialize native engine")
             modeSwitch.isEnabled = false
             calibrateButton.isEnabled = false
-            languageSpinner.isEnabled = false
-            languageModelSpinner.isEnabled = false
         }
     }
 
@@ -240,6 +153,20 @@ class MainActivity : ComponentActivity() {
         updateKeepScreenOn(DasherSessionCoordinator.getInputMode())
         if (localHost != null) {
             DasherSessionCoordinator.activateHost(localHost)
+
+            // Apply preferences changed in Settings screen
+            val prefLanguage = DasherPrefs.getLanguage(this)
+            if (prefLanguage != DasherSessionCoordinator.getLanguage()) {
+                DasherSessionCoordinator.setLanguage(localHost, prefLanguage)
+            }
+            val prefModel = DasherPrefs.getLanguageModel(this)
+            if (prefModel != DasherSessionCoordinator.getLanguageModel()) {
+                DasherSessionCoordinator.setLanguageModel(localHost, prefModel)
+            }
+            val prefMode = DasherPrefs.getInputMode(this)
+            if (prefMode != DasherSessionCoordinator.getInputMode()) {
+                DasherSessionCoordinator.setInputMode(localHost, prefMode)
+            }
         }
         if (DasherSessionCoordinator.getInputMode() == InputMode.TILT && !DasherSessionCoordinator.isPaused()) {
             tiltProvider?.register()

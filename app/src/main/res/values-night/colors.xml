@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Legacy colors -->
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="icon_gray">#FFE3E3E3</color>
+
+    <!-- Dark theme colors - Material3 Dynamic Color fallback -->
+    <color name="md_theme_primary">#D0BCFF</color>
+    <color name="md_theme_on_primary">#381E72</color>
+    <color name="md_theme_primary_container">#4F378A</color>
+    <color name="md_theme_on_primary_container">#EADDFF</color>
+
+    <color name="md_theme_secondary">#CCC2DC</color>
+    <color name="md_theme_on_secondary">#332D41</color>
+    <color name="md_theme_secondary_container">#4A4458</color>
+    <color name="md_theme_on_secondary_container">#E8DEF8</color>
+
+    <color name="md_theme_tertiary">#EFB8C8</color>
+    <color name="md_theme_on_tertiary">#4A2532</color>
+    <color name="md_theme_tertiary_container">#633B48</color>
+    <color name="md_theme_on_tertiary_container">#FFD8E4</color>
+
+    <color name="md_theme_error">#F2B8B5</color>
+    <color name="md_theme_on_error">#601410</color>
+    <color name="md_theme_error_container">#8C1D18</color>
+    <color name="md_theme_on_error_container">#F9DEDC</color>
+
+    <color name="md_theme_background">#1C1B1F</color>
+    <color name="md_theme_on_background">#E6E1E5</color>
+
+    <color name="md_theme_surface">#1C1B1F</color>
+    <color name="md_theme_on_surface">#E6E1E5</color>
+    <color name="md_theme_surface_variant">#49454F</color>
+    <color name="md_theme_on_surface_variant">#CAC4D0</color>
+
+    <color name="md_theme_outline">#938F99</color>
+    <color name="md_theme_inverse_surface">#E6E1E5</color>
+    <color name="md_theme_inverse_on_surface">#313033</color>
+    <color name="md_theme_inverse_primary">#6750A4</color>
+
+    <!-- Custom colors for UI elements -->
+    <color name="icon_tint_color">#E3E3E3</color>
+    <color name="calibrate_button_bg">#000000</color>
+    <color name="calibrate_button_text">#FFFFFF</color>
+</resources>

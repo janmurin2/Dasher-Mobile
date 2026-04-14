@@ -14,8 +14,6 @@ class DasherImeService : InputMethodService() {
 
     companion object {
         private const val TAG = "DasherImeService"
-        private const val PREFS_NAME = "dasher_mobile"
-        private const val PREF_SELECTED_LANGUAGE = "selected_language"
     }
 
     private var hostHandle: DasherSessionCoordinator.HostHandle? = null
@@ -25,10 +23,6 @@ class DasherImeService : InputMethodService() {
     private var suppressLanguageSwitchCallback = false
     private var suppressLanguageModelCallback = false
     private var shouldResetBufferOnNextStart = true
-
-    private val preferences by lazy {
-        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    }
 
     override fun onCreateInputView(): View {
         hostViews?.let { return it.root }
@@ -59,8 +53,8 @@ class DasherImeService : InputMethodService() {
                 val modeLabel = if (mode == InputMode.TILT) "TILT" else "TOUCH"
                 val stateLabel = if (paused) "PAUSED" else "RUNNING"
                 views.statusView.text = "$modeLabel | $stateLabel"
-                views.languageSpinner.isEnabled = paused
-                views.languageModelSpinner.isEnabled = paused
+                views.languageSpinner?.isEnabled = paused
+                views.languageModelSpinner?.isEnabled = paused
             }
         )
 
@@ -143,6 +137,7 @@ class DasherImeService : InputMethodService() {
         val startupLanguage = pendingStartupLanguage ?: return
         if (DasherSessionCoordinator.setLanguage(localHost, startupLanguage)) {
             pendingStartupLanguage = null
+            DasherPrefs.setLanguage(this, startupLanguage)
             syncLanguageSelection()
         }
     }
@@ -158,10 +153,10 @@ class DasherImeService : InputMethodService() {
         ).apply {
             setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         }
-        views.languageSpinner.adapter = adapter
+        views.languageSpinner?.adapter = adapter
         syncLanguageSelection()
 
-        views.languageSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+        views.languageSpinner?.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 if (suppressLanguageSwitchCallback) return
                 val selectedLanguage = languages[position]
@@ -172,7 +167,7 @@ class DasherImeService : InputMethodService() {
                     return
                 }
                 pendingStartupLanguage = null
-                preferences.edit().putString(PREF_SELECTED_LANGUAGE, selectedLanguage.preferenceValue).apply()
+                DasherPrefs.setLanguage(this@DasherImeService, selectedLanguage)
                 views.outputView.text = ""
             }
 
@@ -191,10 +186,10 @@ class DasherImeService : InputMethodService() {
         ).apply {
             setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         }
-        views.languageModelSpinner.adapter = adapter
+        views.languageModelSpinner?.adapter = adapter
         syncLanguageModelSelection()
 
-        views.languageModelSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+        views.languageModelSpinner?.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 if (suppressLanguageModelCallback) return
                 val selectedModel = models[position]
@@ -211,7 +206,7 @@ class DasherImeService : InputMethodService() {
         val views = hostViews ?: return
         val selection = if (DasherSessionCoordinator.getLanguage() == DasherLanguage.SLOVAK) 1 else 0
         suppressLanguageSwitchCallback = true
-        views.languageSpinner.setSelection(selection, false)
+        views.languageSpinner?.setSelection(selection, false)
         suppressLanguageSwitchCallback = false
     }
 
@@ -219,14 +214,11 @@ class DasherImeService : InputMethodService() {
         val views = hostViews ?: return
         val selection = if (DasherSessionCoordinator.getLanguageModel() == LanguageModel.WORD) 1 else 0
         suppressLanguageModelCallback = true
-        views.languageModelSpinner.setSelection(selection, false)
+        views.languageModelSpinner?.setSelection(selection, false)
         suppressLanguageModelCallback = false
     }
 
     private fun restoredLanguage(): DasherLanguage {
-        return DasherLanguage.fromPreferenceValue(
-            preferences.getString(PREF_SELECTED_LANGUAGE, DasherLanguage.ENGLISH.preferenceValue)
-        )
+        return DasherPrefs.getLanguage(this)
     }
 }
-
