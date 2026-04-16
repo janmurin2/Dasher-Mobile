@@ -87,6 +87,12 @@ class DasherEngine(
         emitStatus()
     }
 
+    fun unpause() {
+        if (!isPaused) return
+        isPaused = false
+        emitStatus()
+    }
+
     fun setInputMode(mode: InputMode): Boolean {
         if (destroyed || nativeHandle == 0L || inputMode == mode) return true
         if (!isPaused) return false

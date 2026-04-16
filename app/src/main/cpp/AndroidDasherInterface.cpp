@@ -289,7 +289,7 @@ void AndroidDasherInterface::SetTouch(int action, float x, float y) {
         KeyDown(nowMs(), Dasher::Keys::Primary_Input);
         m_startedByTouch = true;
     } else if (action == 2 && m_startedByTouch) {
-        KeyUp(nowMs(), Dasher::Keys::Primary_Input);
+        KeyDown(nowMs(), Dasher::Keys::Primary_Input);
         m_startedByTouch = false;
     }
 }
@@ -330,7 +330,7 @@ void AndroidDasherInterface::SetAlphabetId(const std::string &alphabetId) {
     }
 
     if (m_startedByTouch) {
-        KeyUp(nowMs(), Dasher::Keys::Primary_Input);
+        KeyDown(nowMs(), Dasher::Keys::Primary_Input);
         m_startedByTouch = false;
     }
 
@@ -347,7 +347,7 @@ void AndroidDasherInterface::SetLanguageModelId(int modelId) {
         return;
     }
     if (m_startedByTouch) {
-        KeyUp(nowMs(), Dasher::Keys::Primary_Input);
+        KeyDown(nowMs(), Dasher::Keys::Primary_Input);
         m_startedByTouch = false;
     }
     SetLongParameter(Dasher::LP_LANGUAGE_MODEL_ID, static_cast<long>(resolved));

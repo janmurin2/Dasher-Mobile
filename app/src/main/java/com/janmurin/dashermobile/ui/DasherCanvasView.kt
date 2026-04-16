@@ -11,6 +11,7 @@ import android.view.MotionEvent
 import android.view.View
 import kotlin.math.max
 import kotlin.math.min
+import android.annotation.SuppressLint
 
 class DasherCanvasView @JvmOverloads constructor(
     context: Context,
@@ -36,6 +37,7 @@ class DasherCanvasView @JvmOverloads constructor(
     private var strings: Array<String> = emptyArray()
     private var drawCount = 0
 
+    var showPauseOverlay: Boolean = false
     var onSurfaceSizeChanged: ((Int, Int) -> Unit)? = null
     var onTouchInput: ((Int, Float, Float) -> Unit)? = null
 
@@ -50,6 +52,7 @@ class DasherCanvasView @JvmOverloads constructor(
         onSurfaceSizeChanged?.invoke(w, h)
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> onTouchInput?.invoke(0, event.x, event.y)
@@ -59,10 +62,20 @@ class DasherCanvasView @JvmOverloads constructor(
         return true
     }
 
+    override fun performClick(): Boolean {
+        super.performClick()
+        return true
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val data = commands
         if (data.isEmpty()) return
+
+        if (showPauseOverlay) {
+            fillPaint.color = 0x80D3D3D3.toInt()
+            canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), fillPaint)
+        }
 
         var minX = Int.MAX_VALUE
         var minY = Int.MAX_VALUE

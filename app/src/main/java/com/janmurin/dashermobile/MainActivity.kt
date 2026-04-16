@@ -3,9 +3,14 @@ package com.janmurin.dashermobile
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.Gravity
+import android.view.View
 import android.view.WindowManager
+import android.widget.FrameLayout
+import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
+import androidx.core.content.res.ResourcesCompat
 import com.janmurin.dashermobile.ui.DasherCanvasView
 import com.janmurin.dashermobile.ui.DasherHostUi
 
@@ -41,9 +46,30 @@ class MainActivity : ComponentActivity() {
         val statusView = hostViews.statusView
         val modeSwitch = requireNotNull(hostViews.modeSwitch)
         val calibrateButton = requireNotNull(hostViews.calibrateButton)
+        val canvasFrame = hostViews.canvasFrame
+        val canvasCalibrateButton = hostViews.canvasCalibrateButton
+        canvasCalibrateButton.visibility = View.GONE
+
+        val pausedView = TextView(this).apply {
+            text = getString(R.string.paused)
+            setTextColor(0xFF000000.toInt())
+            textSize = 22f
+            typeface = ResourcesCompat.getFont(this@MainActivity, R.font.inter_semibold_italic)
+            val padding = (16 * resources.displayMetrics.density).toInt()
+            setPadding(padding, padding, padding, padding)
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.TOP or Gravity.START
+            }
+            visibility = View.GONE
+        }
+        canvasFrame.addView(pausedView)
 
         setContentView(hostViews.root)
         hostViews.settingsButton?.setOnClickListener {
+            hostHandle?.let { DasherSessionCoordinator.requestPause(it) }
             startActivity(Intent(this, SettingsActivity::class.java))
         }
         enableEdgeToEdge()
@@ -62,11 +88,16 @@ class MainActivity : ComponentActivity() {
             DasherSessionCoordinator.updateHostCallbacks(
                 host = localHost,
                 frameConsumer = { commands, strings -> canvasView.submitFrame(commands, strings) },
-                textConsumer = { text -> textView.text = text },
+                textConsumer = { text -> textView.text = text.replace('\u25a1', ' ') },
                 statusConsumer = { mode, paused ->
                     val modeLabel = if (mode == InputMode.TILT) "TILT" else "TOUCH"
                     val stateLabel = if (paused) "PAUSED" else "RUNNING"
-                    statusView.text = "$modeLabel | $stateLabel"
+                    statusView.text = getString(R.string.status_label, modeLabel, stateLabel)
+                    canvasView.showPauseOverlay = paused
+                    pausedView.visibility = if (paused) View.VISIBLE else View.GONE
+                    val showCanvasCalibrateButton = paused && mode == InputMode.TILT
+                    canvasCalibrateButton.visibility = if (showCanvasCalibrateButton) View.VISIBLE else View.GONE
+                    canvasCalibrateButton.isEnabled = showCanvasCalibrateButton
                     updateKeepScreenOn(mode)
                     val switchChecked = mode == InputMode.TILT
                     if (modeSwitch.isChecked != switchChecked) {
@@ -93,6 +124,11 @@ class MainActivity : ComponentActivity() {
                 DasherSessionCoordinator.onTouch(localHost, action, x, y)
             }
 
+            canvasCalibrateButton.setOnClickListener {
+                tiltProvider?.calibrate()
+                hostHandle?.let { DasherSessionCoordinator.unpause(it) }
+            }
+
             textView.setOnClickListener {
                 DasherSessionCoordinator.resetOutputText(localHost)
             }
@@ -117,6 +153,9 @@ class MainActivity : ComponentActivity() {
                         suppressModeSwitchCallback = false
                     }
                     return@setOnCheckedChangeListener
+                }
+                if (mode == InputMode.TILT) {
+                    hostHandle?.let { DasherSessionCoordinator.requestPause(it) }
                 }
                 calibrateButton.isEnabled = DasherSessionCoordinator.getInputMode() == InputMode.TILT
                 if (!checked) {
@@ -154,7 +193,6 @@ class MainActivity : ComponentActivity() {
         if (localHost != null) {
             DasherSessionCoordinator.activateHost(localHost)
 
-            // Apply preferences changed in Settings screen
             val prefLanguage = DasherPrefs.getLanguage(this)
             if (prefLanguage != DasherSessionCoordinator.getLanguage()) {
                 DasherSessionCoordinator.setLanguage(localHost, prefLanguage)
@@ -166,6 +204,10 @@ class MainActivity : ComponentActivity() {
             val prefMode = DasherPrefs.getInputMode(this)
             if (prefMode != DasherSessionCoordinator.getInputMode()) {
                 DasherSessionCoordinator.setInputMode(localHost, prefMode)
+            }
+            if (DasherSessionCoordinator.getInputMode() == InputMode.TILT && DasherSessionCoordinator.isPaused()) {
+                tiltProvider?.calibrate()
+                DasherSessionCoordinator.unpause(localHost)
             }
         }
         if (DasherSessionCoordinator.getInputMode() == InputMode.TILT && !DasherSessionCoordinator.isPaused()) {

@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">Dasher Mobile</string>
     <string name="tilt_mode">Tilt mode</string>
-    <string name="calibrate">Calibrate</string>
+    <string name="calibrate">calibrate</string>
     <string name="language">Language</string>
     <string name="language_english">English</string>
     <string name="language_slovak">Slovak</string>
@@ -24,4 +24,7 @@
     <string name="icon_language">Language</string>
     <string name="icon_language_model">Language model</string>
     <string name="icon_input_mode">Input mode</string>
+    <string name="paused">paused</string>
+    <string name="status_label">%1$s | %2$s</string>
+    <string name="status_initial">TOUCH | PAUSED</string>
 </resources>

@@ -1,6 +1,10 @@
 package com.janmurin.dashermobile.ui
 
+import android.content.ClipboardManager
 import android.content.Context
+import android.text.Editable
+import android.text.TextWatcher
+import android.text.method.ScrollingMovementMethod
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
@@ -10,8 +14,10 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Spinner
-import android.widget.Switch
+import androidx.appcompat.widget.SwitchCompat
 import android.widget.TextView
+import android.widget.Toast
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
@@ -23,11 +29,13 @@ data class DasherHostViews(
     val canvasView: DasherCanvasView,
     val outputView: TextView,
     val statusView: TextView,
-    val modeSwitch: Switch?,
+    val modeSwitch: SwitchCompat?,
     val calibrateButton: Button?,
     val languageSpinner: Spinner?,
     val languageModelSpinner: Spinner?,
-    val settingsButton: View?
+    val settingsButton: View?,
+    val canvasFrame: FrameLayout,
+    val canvasCalibrateButton: Button
 )
 
 object DasherHostUi {
@@ -39,18 +47,34 @@ object DasherHostUi {
         val outputView = TextView(context).apply {
             text = ""
             textSize = if (hostMode.isCompact) 15f else 18f
-            setTextColor(0xFFFFFFFF.toInt())
-            setBackgroundColor(0xCC000000.toInt())
+            setTextColor(0xFF000000.toInt())
+            setBackgroundColor(0xFFFFFFFF.toInt())
             setPadding(dp(8), dp(6), dp(8), dp(6))
             setSingleLine(false)
             maxLines = if (hostMode.isCompact) 2 else 3
+            movementMethod = ScrollingMovementMethod()
+            addTextChangedListener(object : TextWatcher {
+                override fun afterTextChanged(s: Editable?) {
+                    val layout = layout
+                    if (layout != null) {
+                        val scrollAmount = layout.height - height + totalPaddingTop + totalPaddingBottom
+                        if (scrollAmount > 0) {
+                            scrollTo(0, scrollAmount)
+                        } else {
+                            scrollTo(0, 0)
+                        }
+                    }
+                }
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            })
         }
 
         val statusView = TextView(context).apply {
-            text = "TOUCH | PAUSED"
+            text = context.getString(R.string.status_initial)
             textSize = if (hostMode.isCompact) 11f else 12f
             setTextColor(0xFFFFFFFF.toInt())
-            setBackgroundColor(0xFF1B5E20.toInt())
+            setBackgroundColor(0xFF000000.toInt())
             setPadding(dp(6), dp(6), dp(6), dp(6))
         }
 
@@ -80,7 +104,7 @@ object DasherHostUi {
         row1.addView(statusView)
 
         val modeSwitch = if (hostMode.allowsTiltControls) {
-            Switch(context).apply {
+            SwitchCompat(context).apply {
                 text = context.getString(R.string.tilt_mode)
                 isChecked = false
                 setTextColor(0xFFFFFFFF.toInt())
@@ -93,6 +117,7 @@ object DasherHostUi {
         val calibrateButton = if (hostMode.allowsTiltControls) {
             Button(context).apply {
                 text = context.getString(R.string.calibrate)
+                isAllCaps = false
                 isEnabled = false
                 layoutParams = controlLp()
             }.also(row1::addView)
@@ -105,6 +130,7 @@ object DasherHostUi {
             setBackgroundColor(0xDD000000.toInt())
             setPadding(dp(10), dp(10), dp(10), dp(10))
             addView(row1)
+            visibility = View.GONE
         }
 
         var languageSpinner: Spinner? = null
@@ -121,11 +147,11 @@ object DasherHostUi {
             }
 
             languageSpinner = Spinner(context).apply {
-                minimumWidth = dp(if (hostMode.isCompact) 84 else 100)
+                minimumWidth = dp(84)
                 layoutParams = controlLp()
             }
             languageModelSpinner = Spinner(context).apply {
-                minimumWidth = dp(if (hostMode.isCompact) 72 else 88)
+                minimumWidth = dp(72)
                 layoutParams = controlLp()
             }
 
@@ -136,23 +162,46 @@ object DasherHostUi {
             controls.addView(row2)
         }
 
-        val canvasFrame = FrameLayout(context).apply {
-            addView(
-                canvasView,
-                FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-                )
+        val canvasFrame = FrameLayout(context)
+        canvasFrame.addView(
+            canvasView,
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
             )
-            addView(
-                controls,
-                FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    Gravity.BOTTOM
-                )
+        )
+        canvasFrame.addView(
+            controls,
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM
             )
+        )
+
+        val canvasCalibrateButton = Button(context).apply {
+            text = context.getString(R.string.calibrate).lowercase()
+            isAllCaps = false
+            textSize = 16f
+            minHeight = dp(50)
+            minWidth = dp(124)
+            setTextColor(0xFFFFFFFF.toInt())
+            background = ResourcesCompat.getDrawable(context.resources, R.drawable.button_background, null)
+            typeface = ResourcesCompat.getFont(context, R.font.inter_italic)
+            val horizontalPadding = dp(18)
+            val verticalPadding = dp(12)
+            setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.BOTTOM or Gravity.START
+                val margin = dp(16)
+                bottomMargin = margin
+                leftMargin = margin
+            }
         }
+        canvasFrame.addView(canvasCalibrateButton)
 
         val root = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
@@ -169,7 +218,7 @@ object DasherHostUi {
             val topBar = LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setBackgroundColor(0xFF1C1B1F.toInt())
+                setBackgroundColor(0xFF000000.toInt())
                 setPadding(dp(16), dp(8), dp(8), dp(8))
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
@@ -178,15 +227,17 @@ object DasherHostUi {
             }
 
             val titleView = TextView(context).apply {
-                text = context.getString(R.string.app_name)
+                text = context.getString(R.string.app_name).lowercase()
                 setTextColor(0xFFFFFFFF.toInt())
-                textSize = 18f
-                setTypeface(null, android.graphics.Typeface.BOLD)
+                textSize = 22f
+                typeface = ResourcesCompat.getFont(context, R.font.inter_semibold_italic)
+                gravity = Gravity.CENTER_HORIZONTAL
                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             }
 
             settingsIcon = ImageView(context).apply {
                 setImageResource(R.drawable.settings_24px)
+                setColorFilter(0xFFFFFFFF.toInt())
                 contentDescription = context.getString(R.string.icon_settings)
                 val size = dp(48)
                 val iconPadding = dp(12)
@@ -204,13 +255,54 @@ object DasherHostUi {
             root.addView(topBar)
         }
 
-        root.addView(
+        val outputFrame = FrameLayout(context)
+        outputFrame.addView(
             outputView,
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        )
+
+        val copyIcon = ImageView(context).apply {
+            setImageResource(R.drawable.content_copy_24px)
+            setColorFilter(0xFF000000.toInt())
+            val size = dp(24)
+            val margin = dp(8)
+            layoutParams = FrameLayout.LayoutParams(size, size).apply {
+                gravity = Gravity.BOTTOM or Gravity.END
+                rightMargin = margin
+                bottomMargin = margin
+            }
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val clip = android.content.ClipData.newPlainText("Copied Text", outputView.text)
+                clipboard.setPrimaryClip(clip)
+                Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+            }
+        }
+        outputFrame.addView(copyIcon)
+
+
+        root.addView(
+            outputFrame,
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 dp(if (hostMode.isCompact) 48 else 72)
             )
         )
+
+        val divider = View(context).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(1)
+            )
+            setBackgroundColor(0xFF000000.toInt())
+        }
+        root.addView(divider)
+
         root.addView(
             canvasFrame,
             if (hostMode.isCompact) {
@@ -236,7 +328,9 @@ object DasherHostUi {
             calibrateButton = calibrateButton,
             languageSpinner = languageSpinner,
             languageModelSpinner = languageModelSpinner,
-            settingsButton = settingsIcon
+            settingsButton = settingsIcon,
+            canvasFrame = canvasFrame,
+            canvasCalibrateButton = canvasCalibrateButton
         )
     }
 }

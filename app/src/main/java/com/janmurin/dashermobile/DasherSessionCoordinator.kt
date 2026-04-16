@@ -158,6 +158,13 @@ object DasherSessionCoordinator {
         }
     }
 
+    fun unpause(host: HostHandle) {
+        synchronized(lock) {
+            if (activeHostId != host.id) return
+            engine?.unpause()
+        }
+    }
+
     fun resetOutputText(host: HostHandle) {
         synchronized(lock) {
             if (activeHostId != host.id) return

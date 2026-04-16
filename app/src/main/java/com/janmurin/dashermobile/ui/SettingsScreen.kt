@@ -43,12 +43,24 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.janmurin.dashermobile.DasherLanguage
 import com.janmurin.dashermobile.DasherPrefs
 import com.janmurin.dashermobile.InputMode
 import com.janmurin.dashermobile.LanguageModel
 import com.janmurin.dashermobile.R
+
+val Inter = FontFamily(
+    Font(R.font.inter_semibold_italic, FontWeight.SemiBold, FontStyle.Italic)
+)
+
+val InterItalic = FontFamily(
+    Font(R.font.inter_italic, FontWeight.Normal, FontStyle.Italic)
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,12 +82,17 @@ fun SettingsScreen(onBack: () -> Unit) {
 
     Scaffold(
         modifier = Modifier.safeDrawingPadding(),
+        containerColor = Color.White,
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = stringResource(id = R.string.settings),
-                        style = MaterialTheme.typography.titleLarge
+                        text = stringResource(id = R.string.settings).lowercase(),
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontFamily = Inter,
+                            fontStyle = FontStyle.Italic,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     )
                 },
                 navigationIcon = {
@@ -84,11 +101,14 @@ fun SettingsScreen(onBack: () -> Unit) {
                             imageVector = ImageVector.vectorResource(id = R.drawable.arrow_back_24px),
                             contentDescription = stringResource(id = R.string.icon_back),
                             modifier = Modifier.size(24.dp),
-                            tint = MaterialTheme.colorScheme.onSurface
+                            tint = Color.White
                         )
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors()
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = Color.Black,
+                    titleContentColor = Color.White
+                )
             )
         }
     ) { innerPadding ->
@@ -105,7 +125,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 currentValue = if (selectedLanguage == DasherLanguage.SLOVAK) "Slovak" else "English",
                 onClick = { showLanguageDialog = true }
             )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
+            HorizontalDivider(color = Color.Black, thickness = 1.dp)
             SettingRow(
                 iconResId = R.drawable.model_training_24px,
                 iconContentDescription = stringResource(id = R.string.icon_language_model),
@@ -113,7 +133,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 currentValue = if (selectedLanguageModel == LanguageModel.WORD) "Word" else "PPM",
                 onClick = { showLanguageModelDialog = true }
             )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
+            HorizontalDivider(color = Color.Black, thickness = 1.dp)
             SettingRow(
                 iconResId = R.drawable.touch_app_24px,
                 iconContentDescription = stringResource(id = R.string.icon_input_mode),
@@ -181,20 +201,27 @@ private fun SettingRow(
             imageVector = ImageVector.vectorResource(id = iconResId),
             contentDescription = iconContentDescription,
             modifier = Modifier.size(24.dp),
-            tint = if (isSystemInDarkTheme()) MaterialTheme.colorScheme.onSurfaceVariant else Color(0xFFE3E3E3)
+            tint = Color.Black
         )
         Spacer(modifier = Modifier.width(16.dp))
         Column {
             Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface
+                text = title.lowercase(),
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontFamily = Inter,
+                    fontStyle = FontStyle.Italic,
+                    fontWeight = FontWeight.SemiBold
+                ),
+                color = Color.Black
             )
             Spacer(modifier = Modifier.size(4.dp))
             Text(
                 text = currentValue,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontFamily = InterItalic,
+                    fontStyle = FontStyle.Italic
+                ),
+                color = Color.Black
             )
         }
     }
