@@ -21,12 +21,32 @@ class MainActivity : ComponentActivity() {
     private var tiltProvider: TiltInputProvider? = null
     private var isResumed = false
     private var suppressModeSwitchCallback = false
+    private var startupModeApplied = false
+    private var pendingStartupTiltRestore = false
 
     private fun updateKeepScreenOn(mode: InputMode) {
         if (mode == InputMode.TILT) {
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         } else {
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
+
+    private fun scheduleStartupTiltRestore() {
+        window.decorView.post {
+            val localHost = hostHandle ?: return@post
+            if (!isResumed || !pendingStartupTiltRestore) {
+                return@post
+            }
+            val switched = DasherSessionCoordinator.setInputMode(localHost, InputMode.TILT)
+            if (!switched) {
+                return@post
+            }
+            pendingStartupTiltRestore = false
+            tiltProvider?.calibrate()
+            if (DasherSessionCoordinator.isPaused()) {
+                DasherSessionCoordinator.unpause(localHost)
+            }
         }
     }
 
@@ -80,6 +100,7 @@ class MainActivity : ComponentActivity() {
                 DasherSessionCoordinator.onTiltNormalized(localHost, nx, ny)
             }
             val tiltAvailable = tiltProvider?.hasSensor() == true
+            pendingStartupTiltRestore = tiltAvailable && DasherPrefs.getInputMode(this) == InputMode.TILT
             if (!tiltAvailable) {
                 modeSwitch.isEnabled = false
                 calibrateButton.isEnabled = false
@@ -137,6 +158,8 @@ class MainActivity : ComponentActivity() {
                 if (suppressModeSwitchCallback) {
                     return@setOnCheckedChangeListener
                 }
+                // User made an explicit choice, do not apply deferred startup restore anymore.
+                pendingStartupTiltRestore = false
                 if (!tiltAvailable && checked) {
                     suppressModeSwitchCallback = true
                     modeSwitch.isChecked = false
@@ -154,6 +177,7 @@ class MainActivity : ComponentActivity() {
                     }
                     return@setOnCheckedChangeListener
                 }
+                DasherPrefs.setInputMode(this, mode)
                 if (mode == InputMode.TILT) {
                     hostHandle?.let { DasherSessionCoordinator.requestPause(it) }
                 }
@@ -201,9 +225,17 @@ class MainActivity : ComponentActivity() {
             if (prefModel != DasherSessionCoordinator.getLanguageModel()) {
                 DasherSessionCoordinator.setLanguageModel(localHost, prefModel)
             }
-            val prefMode = DasherPrefs.getInputMode(this)
-            if (prefMode != DasherSessionCoordinator.getInputMode()) {
-                DasherSessionCoordinator.setInputMode(localHost, prefMode)
+            if (!startupModeApplied) {
+                DasherSessionCoordinator.setInputMode(localHost, InputMode.TOUCH)
+                startupModeApplied = true
+            }
+            if (pendingStartupTiltRestore) {
+                scheduleStartupTiltRestore()
+            } else {
+                val prefMode = DasherPrefs.getInputMode(this)
+                if (prefMode != DasherSessionCoordinator.getInputMode()) {
+                    DasherSessionCoordinator.setInputMode(localHost, prefMode)
+                }
             }
             if (DasherSessionCoordinator.getInputMode() == InputMode.TILT && DasherSessionCoordinator.isPaused()) {
                 tiltProvider?.calibrate()
