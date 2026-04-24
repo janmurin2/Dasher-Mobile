@@ -10,10 +10,15 @@ enum class InputMode {
 
 enum class LanguageModel(val id: Int) {
     PPM(0),
-    WORD(2);
+    WORD(2),
+    KENLM(5);
 
     companion object {
-        fun fromId(id: Int): LanguageModel = if (id == WORD.id) WORD else PPM
+        fun fromId(id: Int): LanguageModel = when (id) {
+            WORD.id -> WORD
+            KENLM.id -> KENLM
+            else -> PPM
+        }
     }
 }
 

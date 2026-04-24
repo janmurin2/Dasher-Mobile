@@ -342,7 +342,7 @@ int AndroidDasherInterface::GetLanguageModelId() const {
 }
 
 void AndroidDasherInterface::SetLanguageModelId(int modelId) {
-    const int resolved = (modelId == 2) ? 2 : 0;
+    const int resolved = (modelId == 0 || modelId == 2 || modelId == 3 || modelId == 4 || modelId == 5) ? modelId : 0;
     if (GetLongParameter(Dasher::LP_LANGUAGE_MODEL_ID) == static_cast<long>(resolved)) {
         return;
     }

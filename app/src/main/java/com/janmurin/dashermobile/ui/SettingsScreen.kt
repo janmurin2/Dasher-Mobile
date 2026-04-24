@@ -130,7 +130,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 iconResId = R.drawable.model_training_24px,
                 iconContentDescription = stringResource(id = R.string.icon_language_model),
                 title = stringResource(id = R.string.settings_language_model),
-                currentValue = if (selectedLanguageModel == LanguageModel.WORD) "Word" else "PPM",
+                currentValue = languageModelLabel(selectedLanguageModel),
                 onClick = { showLanguageModelDialog = true }
             )
             HorizontalDivider(color = Color.Black, thickness = 1.dp)
@@ -276,7 +276,7 @@ private fun LanguageModelDialog(
         title = { Text(text = stringResource(id = R.string.select_language_model)) },
         text = {
             Column {
-                val models = listOf(LanguageModel.PPM, LanguageModel.WORD)
+                val models = listOf(LanguageModel.PPM, LanguageModel.WORD, LanguageModel.KENLM)
                 models.forEach { model ->
                     Row(
                         modifier = Modifier
@@ -290,7 +290,7 @@ private fun LanguageModelDialog(
                             onClick = { onSelect(model) }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = if (model == LanguageModel.WORD) "Word" else "PPM")
+                        Text(text = languageModelLabel(model))
                     }
                 }
             }
@@ -301,6 +301,15 @@ private fun LanguageModelDialog(
             }
         }
     )
+}
+
+@Composable
+private fun languageModelLabel(model: LanguageModel): String {
+    return when (model) {
+        LanguageModel.PPM -> stringResource(id = R.string.language_model_ppm)
+        LanguageModel.WORD -> stringResource(id = R.string.language_model_word)
+        LanguageModel.KENLM -> stringResource(id = R.string.language_model_kenlm)
+    }
 }
 
 @Composable

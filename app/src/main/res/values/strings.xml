@@ -8,6 +8,7 @@
     <string name="language_model">LM</string>
     <string name="language_model_ppm">PPM</string>
     <string name="language_model_word">WORD</string>
+    <string name="language_model_kenlm">KenLM</string>
     <string name="settings">SETTINGS</string>
     <string name="settings_language">Language</string>
     <string name="settings_language_model">Language model</string>

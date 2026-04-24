@@ -22,11 +22,19 @@ object DasherPrefs {
 
     fun getLanguageModel(context: Context): LanguageModel {
         val value = prefs(context).getString(KEY_LANGUAGE_MODEL, "ppm")
-        return if (value == "word") LanguageModel.WORD else LanguageModel.PPM
+        return when (value) {
+            "word" -> LanguageModel.WORD
+            "kenlm" -> LanguageModel.KENLM
+            else -> LanguageModel.PPM
+        }
     }
 
     fun setLanguageModel(context: Context, model: LanguageModel) {
-        val value = if (model == LanguageModel.WORD) "word" else "ppm"
+        val value = when (model) {
+            LanguageModel.PPM -> "ppm"
+            LanguageModel.WORD -> "word"
+            LanguageModel.KENLM -> "kenlm"
+        }
         prefs(context).edit().putString(KEY_LANGUAGE_MODEL, value).apply()
     }
 

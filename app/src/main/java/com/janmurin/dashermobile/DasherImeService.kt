@@ -176,12 +176,16 @@ class DasherImeService : InputMethodService() {
     }
 
     private fun setupLanguageModelControls(views: DasherHostViews, localHost: DasherSessionCoordinator.HostHandle) {
-        val models = listOf(LanguageModel.PPM, LanguageModel.WORD)
+        val models = listOf(LanguageModel.PPM, LanguageModel.WORD, LanguageModel.KENLM)
         val adapter = ArrayAdapter(
             this,
             android.R.layout.simple_spinner_item,
             models.map {
-                if (it == LanguageModel.WORD) getString(R.string.language_model_word) else getString(R.string.language_model_ppm)
+                when (it) {
+                    LanguageModel.PPM -> getString(R.string.language_model_ppm)
+                    LanguageModel.WORD -> getString(R.string.language_model_word)
+                    LanguageModel.KENLM -> getString(R.string.language_model_kenlm)
+                }
             }
         ).apply {
             setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
@@ -212,7 +216,8 @@ class DasherImeService : InputMethodService() {
 
     private fun syncLanguageModelSelection() {
         val views = hostViews ?: return
-        val selection = if (DasherSessionCoordinator.getLanguageModel() == LanguageModel.WORD) 1 else 0
+        val models = listOf(LanguageModel.PPM, LanguageModel.WORD, LanguageModel.KENLM)
+        val selection = models.indexOf(DasherSessionCoordinator.getLanguageModel()).coerceAtLeast(0)
         suppressLanguageModelCallback = true
         views.languageModelSpinner?.setSelection(selection, false)
         suppressLanguageModelCallback = false
