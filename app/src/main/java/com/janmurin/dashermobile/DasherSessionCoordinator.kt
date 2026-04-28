@@ -118,6 +118,22 @@ object DasherSessionCoordinator {
         }
     }
 
+    fun discardHostRuntime(host: HostHandle) {
+        synchronized(lock) {
+            if (engineHostId != host.id) return
+            val localEngine = engine
+            localEngine?.requestPause()
+            localEngine?.stop()
+            localEngine?.destroy()
+            engine = null
+            nativeHandle = 0L
+            engineHostId = null
+            if (activeHostId == host.id) {
+                activeHostId = null
+            }
+        }
+    }
+
     fun unregisterHost(host: HostHandle) {
         synchronized(lock) {
             val wasActive = activeHostId == host.id

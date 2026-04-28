@@ -69,15 +69,18 @@ fun SettingsScreen(onBack: () -> Unit) {
     var selectedLanguage by remember { mutableStateOf(DasherPrefs.getLanguage(context)) }
     var selectedLanguageModel by remember { mutableStateOf(DasherPrefs.getLanguageModel(context)) }
     var selectedInputMode by remember { mutableStateOf(DasherPrefs.getInputMode(context)) }
+    var selectedImeHeightPercent by remember { mutableStateOf(DasherPrefs.getImeHeightPercent(context)) }
 
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showLanguageModelDialog by remember { mutableStateOf(false) }
     var showInputModeDialog by remember { mutableStateOf(false) }
+    var showImeHeightDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         selectedLanguage = DasherPrefs.getLanguage(context)
         selectedLanguageModel = DasherPrefs.getLanguageModel(context)
         selectedInputMode = DasherPrefs.getInputMode(context)
+        selectedImeHeightPercent = DasherPrefs.getImeHeightPercent(context)
     }
 
     Scaffold(
@@ -141,6 +144,14 @@ fun SettingsScreen(onBack: () -> Unit) {
                 currentValue = if (selectedInputMode == InputMode.TILT) "Tilt" else "Touch",
                 onClick = { showInputModeDialog = true }
             )
+            HorizontalDivider(color = Color.Black, thickness = 1.dp)
+            SettingRow(
+                iconResId = R.drawable.unfold_more_24px,
+                iconContentDescription = stringResource(id = R.string.icon_ime_size),
+                title = stringResource(id = R.string.settings_ime_size),
+                currentValue = "$selectedImeHeightPercent%",
+                onClick = { showImeHeightDialog = true }
+            )
         }
     }
 
@@ -176,6 +187,18 @@ fun SettingsScreen(onBack: () -> Unit) {
                 DasherPrefs.setInputMode(context, mode)
                 selectedInputMode = mode
                 showInputModeDialog = false
+            }
+        )
+    }
+
+    if (showImeHeightDialog) {
+        ImeHeightDialog(
+            currentPercent = selectedImeHeightPercent,
+            onDismiss = { showImeHeightDialog = false },
+            onSelect = { percent ->
+                DasherPrefs.setImeHeightPercent(context, percent)
+                selectedImeHeightPercent = percent
+                showImeHeightDialog = false
             }
         )
     }
@@ -361,3 +384,42 @@ private fun InputModeDialog(
         }
     )
 }
+
+@Composable
+private fun ImeHeightDialog(
+    currentPercent: Int,
+    onDismiss: () -> Unit,
+    onSelect: (Int) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = stringResource(id = R.string.select_ime_size)) },
+        text = {
+            Column {
+                val options = listOf(30, 40, 50, 60, 70)
+                options.forEach { percent ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelect(percent) }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = currentPercent == percent,
+                            onClick = { onSelect(percent) }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = "$percent%")
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = stringResource(id = R.string.cancel))
+            }
+        }
+    )
+}
+

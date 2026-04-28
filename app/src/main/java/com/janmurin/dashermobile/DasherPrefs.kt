@@ -7,6 +7,9 @@ object DasherPrefs {
     const val KEY_LANGUAGE = "selected_language"
     const val KEY_LANGUAGE_MODEL = "selected_language_model"
     const val KEY_INPUT_MODE = "selected_input_mode"
+    const val KEY_IME_HEIGHT_PERCENT = "ime_height_percent"
+
+    private const val DEFAULT_IME_HEIGHT_PERCENT = 40
 
     private fun prefs(context: Context) =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -46,6 +49,21 @@ object DasherPrefs {
     fun setInputMode(context: Context, mode: InputMode) {
         val value = if (mode == InputMode.TILT) "tilt" else "touch"
         prefs(context).edit().putString(KEY_INPUT_MODE, value).apply()
+    }
+
+    fun getImeHeightPercent(context: Context): Int {
+        val raw = prefs(context).getInt(KEY_IME_HEIGHT_PERCENT, DEFAULT_IME_HEIGHT_PERCENT)
+        return normalizeImeHeightPercent(raw)
+    }
+
+    fun setImeHeightPercent(context: Context, percent: Int) {
+        prefs(context).edit().putInt(KEY_IME_HEIGHT_PERCENT, normalizeImeHeightPercent(percent)).apply()
+    }
+
+    private fun normalizeImeHeightPercent(percent: Int): Int {
+        val clamped = percent.coerceIn(30, 70)
+        val roundedToStep = ((clamped + 5) / 10) * 10
+        return roundedToStep.coerceIn(30, 70)
     }
 }
 

@@ -4,9 +4,11 @@ import android.content.Context
 import android.inputmethodservice.InputMethodService
 import android.util.Log
 import android.view.View
+import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
+import android.widget.LinearLayout
 import com.janmurin.dashermobile.ui.DasherHostUi
 import com.janmurin.dashermobile.ui.DasherHostViews
 
@@ -31,6 +33,7 @@ class DasherImeService : InputMethodService() {
         hostViews?.let { return it.root }
 
         val views = DasherHostUi.create(this, HostMode.IME)
+        applyImeHeightSetting(views.root)
         hostViews = views
         imeTextSink = DasherImeTextSink(
             inputConnectionProvider = { currentInputConnection },
@@ -147,6 +150,7 @@ class DasherImeService : InputMethodService() {
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         val localHost = ensureHost() ?: return
+        hostViews?.let { applyImeHeightSetting(it.root) }
         isInputViewActive = true
         DasherSessionCoordinator.activateHost(localHost)
         applyImeStartupState(localHost)
@@ -168,6 +172,7 @@ class DasherImeService : InputMethodService() {
             DasherSessionCoordinator.clearTiltInput(it)
             DasherSessionCoordinator.requestPause(it)
             DasherSessionCoordinator.deactivateHost(it)
+            DasherSessionCoordinator.discardHostRuntime(it)
         }
         super.onFinishInputView(finishingInput)
     }
@@ -305,5 +310,26 @@ class DasherImeService : InputMethodService() {
 
     private fun restoredLanguage(): DasherLanguage {
         return DasherPrefs.getLanguage(this)
+    }
+
+    private fun applyImeHeightSetting(rootView: View) {
+        val percent = DasherPrefs.getImeHeightPercent(this)
+        val screenHeight = resources.displayMetrics.heightPixels
+        if (screenHeight <= 0) return
+
+        val targetHeight = (screenHeight * (percent / 100f)).toInt()
+        val layoutParams = rootView.layoutParams
+        if (layoutParams != null) {
+            layoutParams.width = ViewGroup.LayoutParams.MATCH_PARENT
+            layoutParams.height = targetHeight
+            rootView.layoutParams = layoutParams
+        } else {
+            rootView.layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                targetHeight
+            )
+        }
+        rootView.minimumHeight = targetHeight
+        rootView.requestLayout()
     }
 }

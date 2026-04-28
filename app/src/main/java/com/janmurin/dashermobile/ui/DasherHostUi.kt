@@ -310,7 +310,8 @@ object DasherHostUi {
             if (hostMode.isCompact) {
                 LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    dp(240)
+                    0,
+                    1f
                 )
             } else {
                 LinearLayout.LayoutParams(
