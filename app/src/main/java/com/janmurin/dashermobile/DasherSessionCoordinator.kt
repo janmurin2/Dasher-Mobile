@@ -197,6 +197,12 @@ object DasherSessionCoordinator {
         }
     }
 
+    fun getMovementSpeedPercent(): Int {
+        synchronized(lock) {
+            return engine?.getMovementSpeedPercent() ?: 100
+        }
+    }
+
     fun onSurfaceSizeChanged(host: HostHandle, width: Int, height: Int) {
         synchronized(lock) {
             val session = hostSessions[host.id] ?: return
@@ -267,6 +273,13 @@ object DasherSessionCoordinator {
         synchronized(lock) {
             if (activeHostId != host.id) return false
             return engine?.setLanguageModel(model) == true
+        }
+    }
+
+    fun setMovementSpeedPercent(host: HostHandle, percent: Int): Boolean {
+        synchronized(lock) {
+            if (activeHostId != host.id) return false
+            return engine?.setMovementSpeedPercent(percent) == true
         }
     }
 

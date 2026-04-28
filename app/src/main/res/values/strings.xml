@@ -14,6 +14,7 @@
     <string name="settings_language_model">Language model</string>
     <string name="settings_input_mode">Input mode</string>
     <string name="settings_ime_size">IME size</string>
+    <string name="settings_movement_speed">Movement speed</string>
     <string name="input_mode_touch">Touch</string>
     <string name="input_mode_tilt">Tilt</string>
     <string name="input_mode_tilt_unavailable">Tilt (unavailable)</string>
@@ -21,6 +22,7 @@
     <string name="select_language_model">Select language model</string>
     <string name="select_input_mode">Select input mode</string>
     <string name="select_ime_size">Select IME size</string>
+    <string name="select_movement_speed">Select movement speed</string>
     <string name="cancel">Cancel</string>
     <string name="icon_settings">Settings</string>
     <string name="icon_back">Back</string>
@@ -28,6 +30,7 @@
     <string name="icon_language_model">Language model</string>
     <string name="icon_input_mode">Input mode</string>
     <string name="icon_ime_size">IME size</string>
+    <string name="icon_movement_speed">Movement speed</string>
     <string name="paused">paused</string>
     <string name="status_label">%1$s | %2$s</string>
     <string name="status_initial">TOUCH | PAUSED</string>

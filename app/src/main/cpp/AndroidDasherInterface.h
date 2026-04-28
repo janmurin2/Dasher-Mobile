@@ -33,6 +33,8 @@ public:
     void SetAlphabetId(const std::string &alphabetId);
     int GetLanguageModelId() const;
     void SetLanguageModelId(int modelId);
+    int GetMovementSpeedPercent() const;
+    void SetMovementSpeedPercent(int percent);
 
     unsigned int ctrlMove(bool bForwards, Dasher::EditDistance dist) override;
     unsigned int ctrlDelete(bool bForwards, Dasher::EditDistance dist) override;

@@ -208,6 +208,11 @@ class DasherImeService : InputMethodService() {
         if (prefModel != DasherSessionCoordinator.getLanguageModel()) {
             DasherSessionCoordinator.setLanguageModel(localHost, prefModel)
         }
+
+        val prefSpeed = DasherPrefs.getMovementSpeedPercent(this)
+        if (prefSpeed != DasherSessionCoordinator.getMovementSpeedPercent()) {
+            DasherSessionCoordinator.setMovementSpeedPercent(localHost, prefSpeed)
+        }
         
         syncLanguageSelection()
         syncLanguageModelSelection()

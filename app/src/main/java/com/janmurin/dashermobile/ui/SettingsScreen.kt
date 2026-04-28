@@ -4,7 +4,6 @@ import android.content.Context
 import android.hardware.Sensor
 import android.hardware.SensorManager
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -70,17 +69,20 @@ fun SettingsScreen(onBack: () -> Unit) {
     var selectedLanguageModel by remember { mutableStateOf(DasherPrefs.getLanguageModel(context)) }
     var selectedInputMode by remember { mutableStateOf(DasherPrefs.getInputMode(context)) }
     var selectedImeHeightPercent by remember { mutableStateOf(DasherPrefs.getImeHeightPercent(context)) }
+    var selectedMovementSpeedPercent by remember { mutableStateOf(DasherPrefs.getMovementSpeedPercent(context)) }
 
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showLanguageModelDialog by remember { mutableStateOf(false) }
     var showInputModeDialog by remember { mutableStateOf(false) }
     var showImeHeightDialog by remember { mutableStateOf(false) }
+    var showMovementSpeedDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         selectedLanguage = DasherPrefs.getLanguage(context)
         selectedLanguageModel = DasherPrefs.getLanguageModel(context)
         selectedInputMode = DasherPrefs.getInputMode(context)
         selectedImeHeightPercent = DasherPrefs.getImeHeightPercent(context)
+        selectedMovementSpeedPercent = DasherPrefs.getMovementSpeedPercent(context)
     }
 
     Scaffold(
@@ -152,6 +154,14 @@ fun SettingsScreen(onBack: () -> Unit) {
                 currentValue = "$selectedImeHeightPercent%",
                 onClick = { showImeHeightDialog = true }
             )
+            HorizontalDivider(color = Color.Black, thickness = 1.dp)
+            SettingRow(
+                iconResId = R.drawable.speed_24px,
+                iconContentDescription = stringResource(id = R.string.icon_movement_speed),
+                title = stringResource(id = R.string.settings_movement_speed),
+                currentValue = "$selectedMovementSpeedPercent%",
+                onClick = { showMovementSpeedDialog = true }
+            )
         }
     }
 
@@ -199,6 +209,18 @@ fun SettingsScreen(onBack: () -> Unit) {
                 DasherPrefs.setImeHeightPercent(context, percent)
                 selectedImeHeightPercent = percent
                 showImeHeightDialog = false
+            }
+        )
+    }
+
+    if (showMovementSpeedDialog) {
+        MovementSpeedDialog(
+            currentPercent = selectedMovementSpeedPercent,
+            onDismiss = { showMovementSpeedDialog = false },
+            onSelect = { percent ->
+                DasherPrefs.setMovementSpeedPercent(context, percent)
+                selectedMovementSpeedPercent = percent
+                showMovementSpeedDialog = false
             }
         )
     }
@@ -397,6 +419,44 @@ private fun ImeHeightDialog(
         text = {
             Column {
                 val options = listOf(30, 40, 50, 60, 70)
+                options.forEach { percent ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelect(percent) }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = currentPercent == percent,
+                            onClick = { onSelect(percent) }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = "$percent%")
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = stringResource(id = R.string.cancel))
+            }
+        }
+    )
+}
+
+@Composable
+private fun MovementSpeedDialog(
+    currentPercent: Int,
+    onDismiss: () -> Unit,
+    onSelect: (Int) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = stringResource(id = R.string.select_movement_speed)) },
+        text = {
+            Column {
+                val options = listOf(50, 75, 100, 150, 200, 250, 300, 400)
                 options.forEach { percent ->
                     Row(
                         modifier = Modifier

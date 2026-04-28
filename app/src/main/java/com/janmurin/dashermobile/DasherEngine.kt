@@ -259,6 +259,17 @@ class DasherEngine(
         return true
     }
 
+    fun getMovementSpeedPercent(): Int {
+        if (destroyed || nativeHandle == 0L) return 100
+        return NativeBridge.nativeGetMovementSpeedPercent(nativeHandle)
+    }
+
+    fun setMovementSpeedPercent(percent: Int): Boolean {
+        if (destroyed || nativeHandle == 0L) return false
+        NativeBridge.nativeSetMovementSpeedPercent(nativeHandle, percent)
+        return true
+    }
+
     fun setFrameConsumer(consumer: (IntArray, Array<String>) -> Unit) {
         frameConsumer = consumer
     }

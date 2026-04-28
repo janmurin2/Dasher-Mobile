@@ -225,6 +225,10 @@ class MainActivity : ComponentActivity() {
             if (prefModel != DasherSessionCoordinator.getLanguageModel()) {
                 DasherSessionCoordinator.setLanguageModel(localHost, prefModel)
             }
+            val prefSpeed = DasherPrefs.getMovementSpeedPercent(this)
+            if (prefSpeed != DasherSessionCoordinator.getMovementSpeedPercent()) {
+                DasherSessionCoordinator.setMovementSpeedPercent(localHost, prefSpeed)
+            }
             if (!startupModeApplied) {
                 DasherSessionCoordinator.setInputMode(localHost, InputMode.TOUCH)
                 startupModeApplied = true
