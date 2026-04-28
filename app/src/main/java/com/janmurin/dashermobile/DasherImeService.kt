@@ -19,10 +19,13 @@ class DasherImeService : InputMethodService() {
     private var hostHandle: DasherSessionCoordinator.HostHandle? = null
     private var hostViews: DasherHostViews? = null
     private var imeTextSink: DasherImeTextSink? = null
+    private var tiltProvider: TiltInputProvider? = null
     private var pendingStartupLanguage: DasherLanguage? = null
     private var suppressLanguageSwitchCallback = false
     private var suppressLanguageModelCallback = false
+    private var suppressModeSwitchCallback = false
     private var shouldResetBufferOnNextStart = true
+    private var isInputViewActive = false
 
     override fun onCreateInputView(): View {
         hostViews?.let { return it.root }
@@ -42,6 +45,14 @@ class DasherImeService : InputMethodService() {
         }
         hostHandle = localHost
 
+        tiltProvider = TiltInputProvider(this) { nx, ny ->
+            DasherSessionCoordinator.onTiltNormalized(localHost, nx, ny)
+        }
+        val tiltAvailable = tiltProvider?.hasSensor() == true
+        if (!tiltAvailable) {
+            views.modeSwitch?.isEnabled = false
+        }
+
         DasherSessionCoordinator.updateHostCallbacks(
             host = localHost,
             frameConsumer = { commands, strings -> views.canvasView.submitFrame(commands, strings) },
@@ -55,6 +66,28 @@ class DasherImeService : InputMethodService() {
                 views.statusView.text = "$modeLabel | $stateLabel"
                 views.languageSpinner?.isEnabled = paused
                 views.languageModelSpinner?.isEnabled = paused
+                val showCanvasCalibrateButton = paused && mode == InputMode.TILT
+                views.canvasCalibrateButton.visibility = if (showCanvasCalibrateButton) View.VISIBLE else View.GONE
+                views.canvasCalibrateButton.isEnabled = showCanvasCalibrateButton
+                views.canvasView.showPauseOverlay = paused
+                
+                val switchChecked = mode == InputMode.TILT
+                if (views.modeSwitch?.isChecked != switchChecked) {
+                    suppressModeSwitchCallback = true
+                    views.modeSwitch?.isChecked = switchChecked
+                    suppressModeSwitchCallback = false
+                }
+                views.calibrateButton?.isEnabled = switchChecked
+                
+                if (mode == InputMode.TILT && isInputViewActive) {
+                    if (!paused) {
+                        tiltProvider?.register()
+                    } else {
+                        tiltProvider?.unregister()
+                    }
+                } else {
+                    tiltProvider?.unregister()
+                }
             }
         )
 
@@ -64,6 +97,32 @@ class DasherImeService : InputMethodService() {
         }
         views.canvasView.onTouchInput = { action, x, y ->
             DasherSessionCoordinator.onTouch(localHost, action, x, y)
+        }
+
+        views.modeSwitch?.setOnCheckedChangeListener { _, checked ->
+            if (suppressModeSwitchCallback) return@setOnCheckedChangeListener
+            val mode = if (checked) InputMode.TILT else InputMode.TOUCH
+            val switched = DasherSessionCoordinator.setInputMode(localHost, mode)
+            if (switched) {
+                DasherPrefs.setInputMode(this, mode)
+            } else {
+                val actualChecked = DasherSessionCoordinator.getInputMode() == InputMode.TILT
+                if (views.modeSwitch?.isChecked != actualChecked) {
+                    suppressModeSwitchCallback = true
+                    views.modeSwitch?.isChecked = actualChecked
+                    suppressModeSwitchCallback = false
+                }
+            }
+        }
+
+        views.calibrateButton?.setOnClickListener {
+            tiltProvider?.calibrate()
+            DasherSessionCoordinator.unpause(localHost)
+        }
+
+        views.canvasCalibrateButton.setOnClickListener {
+            tiltProvider?.calibrate()
+            DasherSessionCoordinator.unpause(localHost)
         }
 
         setupLanguageControls(views, localHost)
@@ -88,12 +147,25 @@ class DasherImeService : InputMethodService() {
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         val localHost = ensureHost() ?: return
+        isInputViewActive = true
         DasherSessionCoordinator.activateHost(localHost)
         applyImeStartupState(localHost)
+        
+        DasherSessionCoordinator.requestPause(localHost)
+        imeTextSink?.resetTracking()
+        hostViews?.outputView?.text = ""
+        DasherSessionCoordinator.resetOutputText(localHost)
+        
+        if (DasherSessionCoordinator.getInputMode() == InputMode.TILT && !DasherSessionCoordinator.isPaused()) {
+            tiltProvider?.register()
+        }
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        isInputViewActive = false
+        tiltProvider?.unregister()
         hostHandle?.let {
+            DasherSessionCoordinator.clearTiltInput(it)
             DasherSessionCoordinator.requestPause(it)
             DasherSessionCoordinator.deactivateHost(it)
         }
@@ -101,6 +173,8 @@ class DasherImeService : InputMethodService() {
     }
 
     override fun onDestroy() {
+        tiltProvider?.unregister()
+        tiltProvider = null
         hostHandle?.let { DasherSessionCoordinator.unregisterHost(it) }
         hostHandle = null
         hostViews = null
@@ -119,16 +193,20 @@ class DasherImeService : InputMethodService() {
 
     private fun applyImeStartupState(localHost: DasherSessionCoordinator.HostHandle) {
         DasherSessionCoordinator.requestPause(localHost)
-        DasherSessionCoordinator.setInputMode(localHost, InputMode.TOUCH)
+        
+        val prefMode = DasherPrefs.getInputMode(this)
+        if (prefMode != DasherSessionCoordinator.getInputMode()) {
+            DasherSessionCoordinator.setInputMode(localHost, prefMode)
+        }
+        
+        val prefModel = DasherPrefs.getLanguageModel(this)
+        if (prefModel != DasherSessionCoordinator.getLanguageModel()) {
+            DasherSessionCoordinator.setLanguageModel(localHost, prefModel)
+        }
+        
         syncLanguageSelection()
         syncLanguageModelSelection()
 
-        if (shouldResetBufferOnNextStart) {
-            imeTextSink?.resetTracking()
-            hostViews?.outputView?.text = ""
-            DasherSessionCoordinator.resetOutputText(localHost)
-            shouldResetBufferOnNextStart = false
-        }
 
         applyPendingLanguage(localHost)
     }
@@ -199,7 +277,9 @@ class DasherImeService : InputMethodService() {
                 val selectedModel = models[position]
                 if (!DasherSessionCoordinator.setLanguageModel(localHost, selectedModel)) {
                     syncLanguageModelSelection()
+                    return
                 }
+                DasherPrefs.setLanguageModel(this@DasherImeService, selectedModel)
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) = Unit

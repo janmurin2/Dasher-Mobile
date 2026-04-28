@@ -11,26 +11,43 @@ object DasherSessionCoordinator {
         val statusConsumer: (InputMode, Boolean) -> Unit
     )
 
+    private data class HostSession(
+        val filesDirPath: String,
+        val assets: AssetManager,
+        var callbacks: HostCallbacks,
+        var surfaceWidth: Int = 0,
+        var surfaceHeight: Int = 0
+    )
+
     private val lock = Any()
     private var nextHostId = 1
     private var nativeHandle = 0L
     private var engine: DasherEngine? = null
-    private val hostCallbacks = mutableMapOf<Int, HostCallbacks>()
+    private var engineHostId: Int? = null
+    private val hostSessions = mutableMapOf<Int, HostSession>()
     private var activeHostId: Int? = null
 
     fun registerHost(filesDirPath: String, assets: AssetManager): HostHandle? {
         synchronized(lock) {
-            val localEngine = ensureEngine(filesDirPath, assets) ?: return null
             val handle = HostHandle(nextHostId++)
-            hostCallbacks[handle.id] = HostCallbacks(
-                frameConsumer = { _, _ -> },
-                textConsumer = {},
-                statusConsumer = { _, _ -> }
+            hostSessions[handle.id] = HostSession(
+                filesDirPath = filesDirPath,
+                assets = assets,
+                callbacks = HostCallbacks(
+                    frameConsumer = { _, _ -> },
+                    textConsumer = {},
+                    statusConsumer = { _, _ -> }
+                )
             )
-            if (activeHostId == null) {
+
+            if (engine == null) {
+                val localEngine = createEngine(filesDirPath, assets) ?: return null
+                engine = localEngine
+                engineHostId = handle.id
                 activeHostId = handle.id
                 bindCallbacks(localEngine, handle.id)
             }
+
             return handle
         }
     }
@@ -42,8 +59,8 @@ object DasherSessionCoordinator {
         statusConsumer: (InputMode, Boolean) -> Unit
     ) {
         synchronized(lock) {
-            if (!hostCallbacks.containsKey(host.id)) return
-            hostCallbacks[host.id] = HostCallbacks(frameConsumer, textConsumer, statusConsumer)
+            val session = hostSessions[host.id] ?: return
+            session.callbacks = HostCallbacks(frameConsumer, textConsumer, statusConsumer)
             val localEngine = engine ?: return
             if (activeHostId == host.id) {
                 bindCallbacks(localEngine, host.id)
@@ -53,10 +70,40 @@ object DasherSessionCoordinator {
 
     fun activateHost(host: HostHandle) {
         synchronized(lock) {
-            if (!hostCallbacks.containsKey(host.id)) return
-            val localEngine = engine ?: return
+            val session = hostSessions[host.id] ?: return
+
+            val existingEngine = engine
+            if (existingEngine != null && engineHostId == host.id) {
+                activeHostId = host.id
+                bindCallbacks(existingEngine, host.id)
+                if (session.surfaceWidth > 0 && session.surfaceHeight > 0) {
+                    existingEngine.onSurfaceSizeChanged(session.surfaceWidth, session.surfaceHeight)
+                }
+                existingEngine.start()
+                return
+            }
+
+            engine?.let { existing ->
+                existing.requestPause()
+                existing.stop()
+                existing.destroy()
+            }
+
+            val localEngine = createEngine(session.filesDirPath, session.assets) ?: run {
+                engine = null
+                nativeHandle = 0L
+                engineHostId = null
+                activeHostId = null
+                return
+            }
+
+            engine = localEngine
+            engineHostId = host.id
             activeHostId = host.id
             bindCallbacks(localEngine, host.id)
+            if (session.surfaceWidth > 0 && session.surfaceHeight > 0) {
+                localEngine.onSurfaceSizeChanged(session.surfaceWidth, session.surfaceHeight)
+            }
             localEngine.start()
         }
     }
@@ -74,19 +121,30 @@ object DasherSessionCoordinator {
     fun unregisterHost(host: HostHandle) {
         synchronized(lock) {
             val wasActive = activeHostId == host.id
-            hostCallbacks.remove(host.id)
+            hostSessions.remove(host.id)
 
-            val localEngine = engine
-            if (wasActive && localEngine != null) {
-                localEngine.requestPause()
-                localEngine.stop()
+            val ownsEngine = engineHostId == host.id
+
+            if (wasActive || ownsEngine) {
+                val localEngine = engine
+                localEngine?.requestPause()
+                localEngine?.stop()
+                localEngine?.destroy()
                 activeHostId = null
+                engine = null
+                nativeHandle = 0L
+                engineHostId = null
             }
 
-            if (hostCallbacks.isEmpty()) {
+            if (hostSessions.isEmpty()) {
+                val localEngine = engine
+                localEngine?.requestPause()
+                localEngine?.stop()
                 localEngine?.destroy()
                 engine = null
                 nativeHandle = 0L
+                engineHostId = null
+                activeHostId = null
             }
         }
     }
@@ -125,6 +183,9 @@ object DasherSessionCoordinator {
 
     fun onSurfaceSizeChanged(host: HostHandle, width: Int, height: Int) {
         synchronized(lock) {
+            val session = hostSessions[host.id] ?: return
+            session.surfaceWidth = width
+            session.surfaceHeight = height
             if (activeHostId != host.id) return
             engine?.onSurfaceSizeChanged(width, height)
         }
@@ -193,21 +254,18 @@ object DasherSessionCoordinator {
         }
     }
 
-    private fun ensureEngine(filesDirPath: String, assets: AssetManager): DasherEngine? {
-        engine?.let { return it }
+    private fun createEngine(filesDirPath: String, assets: AssetManager): DasherEngine? {
         val createdHandle = NativeBridge.nativeCreate(filesDirPath)
         if (createdHandle == 0L) {
             return null
         }
         NativeBridge.nativeSetAssetManager(createdHandle, assets)
         nativeHandle = createdHandle
-        val createdEngine = DasherEngine(createdHandle) { _, _ -> }
-        engine = createdEngine
-        return createdEngine
+        return DasherEngine(createdHandle) { _, _ -> }
     }
 
     private fun bindCallbacks(localEngine: DasherEngine, hostId: Int) {
-        val callbacks = hostCallbacks[hostId] ?: return
+        val callbacks = hostSessions[hostId]?.callbacks ?: return
         localEngine.setFrameConsumer(callbacks.frameConsumer)
         localEngine.onTextUpdate = callbacks.textConsumer
         localEngine.onStatusUpdate = callbacks.statusConsumer

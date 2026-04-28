@@ -241,10 +241,6 @@ class DasherEngine(
         if (NativeBridge.nativeGetAlphabetId(nativeHandle) != language.alphabetId) {
             NativeBridge.nativeSetAlphabetId(nativeHandle, language.alphabetId)
         }
-        NativeBridge.nativeResetOutputText(nativeHandle)
-        onTextUpdate?.invoke("")
-        lastRenderableCommands = IntArray(0)
-        lastRenderableStrings = emptyArray()
         hasBootstrapFrame = false
         return true
     }

@@ -200,6 +200,7 @@ object DasherHostUi {
                 bottomMargin = margin
                 leftMargin = margin
             }
+            visibility = View.GONE
         }
         canvasFrame.addView(canvasCalibrateButton)
 
@@ -255,44 +256,45 @@ object DasherHostUi {
             root.addView(topBar)
         }
 
-        val outputFrame = FrameLayout(context)
-        outputFrame.addView(
-            outputView,
-            FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
+        if (hostMode == HostMode.APP) {
+            val outputFrame = FrameLayout(context)
+            outputFrame.addView(
+                outputView,
+                FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
             )
-        )
 
-        val copyIcon = ImageView(context).apply {
-            setImageResource(R.drawable.content_copy_24px)
-            setColorFilter(0xFF000000.toInt())
-            val size = dp(24)
-            val margin = dp(8)
-            layoutParams = FrameLayout.LayoutParams(size, size).apply {
-                gravity = Gravity.BOTTOM or Gravity.END
-                rightMargin = margin
-                bottomMargin = margin
+            val copyIcon = ImageView(context).apply {
+                setImageResource(R.drawable.content_copy_24px)
+                setColorFilter(0xFF000000.toInt())
+                val size = dp(24)
+                val margin = dp(8)
+                layoutParams = FrameLayout.LayoutParams(size, size).apply {
+                    gravity = Gravity.BOTTOM or Gravity.END
+                    rightMargin = margin
+                    bottomMargin = margin
+                }
+                isClickable = true
+                isFocusable = true
+                setOnClickListener {
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    val clip = android.content.ClipData.newPlainText("Copied Text", outputView.text)
+                    clipboard.setPrimaryClip(clip)
+                    Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+                }
             }
-            isClickable = true
-            isFocusable = true
-            setOnClickListener {
-                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                val clip = android.content.ClipData.newPlainText("Copied Text", outputView.text)
-                clipboard.setPrimaryClip(clip)
-                Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
-            }
+            outputFrame.addView(copyIcon)
+
+            root.addView(
+                outputFrame,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    dp(72)
+                )
+            )
         }
-        outputFrame.addView(copyIcon)
-
-
-        root.addView(
-            outputFrame,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(if (hostMode.isCompact) 48 else 72)
-            )
-        )
 
         val divider = View(context).apply {
             layoutParams = LinearLayout.LayoutParams(

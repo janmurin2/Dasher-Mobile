@@ -237,6 +237,7 @@ class MainActivity : ComponentActivity() {
                     DasherSessionCoordinator.setInputMode(localHost, prefMode)
                 }
             }
+
             if (DasherSessionCoordinator.getInputMode() == InputMode.TILT && DasherSessionCoordinator.isPaused()) {
                 tiltProvider?.calibrate()
                 DasherSessionCoordinator.unpause(localHost)
