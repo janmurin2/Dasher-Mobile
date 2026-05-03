@@ -10,10 +10,15 @@ enum class InputMode {
 
 enum class LanguageModel(val id: Int) {
     PPM(0),
-    WORD(2);
+    WORD(2),
+    KENLM(5);
 
     companion object {
-        fun fromId(id: Int): LanguageModel = if (id == WORD.id) WORD else PPM
+        fun fromId(id: Int): LanguageModel = when (id) {
+            WORD.id -> WORD
+            KENLM.id -> KENLM
+            else -> PPM
+        }
     }
 }
 
@@ -236,10 +241,6 @@ class DasherEngine(
         if (NativeBridge.nativeGetAlphabetId(nativeHandle) != language.alphabetId) {
             NativeBridge.nativeSetAlphabetId(nativeHandle, language.alphabetId)
         }
-        NativeBridge.nativeResetOutputText(nativeHandle)
-        onTextUpdate?.invoke("")
-        lastRenderableCommands = IntArray(0)
-        lastRenderableStrings = emptyArray()
         hasBootstrapFrame = false
         return true
     }
@@ -255,6 +256,17 @@ class DasherEngine(
         if (getLanguageModel() == model) return true
         NativeBridge.nativeSetLanguageModelId(nativeHandle, model.id)
         hasBootstrapFrame = false
+        return true
+    }
+
+    fun getMovementSpeedPercent(): Int {
+        if (destroyed || nativeHandle == 0L) return 100
+        return NativeBridge.nativeGetMovementSpeedPercent(nativeHandle)
+    }
+
+    fun setMovementSpeedPercent(percent: Int): Boolean {
+        if (destroyed || nativeHandle == 0L) return false
+        NativeBridge.nativeSetMovementSpeedPercent(nativeHandle, percent)
         return true
     }
 

@@ -5,6 +5,6 @@ enum class HostMode(
     val allowsTiltControls: Boolean
 ) {
     APP(isCompact = false, allowsTiltControls = true),
-    IME(isCompact = true, allowsTiltControls = false)
+    IME(isCompact = true, allowsTiltControls = true)
 }
 

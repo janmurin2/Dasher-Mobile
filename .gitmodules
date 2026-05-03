@@ -1,3 +1,6 @@
 [submodule "third_party/DasherCore"]
 	path = third_party/DasherCore
-	url = https://github.com/dasher-project/DasherCore.git
+	url = https://github.com/janmurin2/DasherCore.git
+[submodule "third_party/kenlm"]
+	path = third_party/kenlm
+	url = https://github.com/kpu/kenlm.git

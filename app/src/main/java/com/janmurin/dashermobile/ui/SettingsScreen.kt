@@ -1,13 +1,16 @@
 package com.janmurin.dashermobile.ui
 
+import android.content.Intent
 import android.content.Context
 import android.hardware.Sensor
 import android.hardware.SensorManager
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.defaultMinSize
@@ -17,7 +20,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -49,6 +55,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.janmurin.dashermobile.DasherLanguage
+import com.janmurin.dashermobile.KenlmModelFiles
 import com.janmurin.dashermobile.DasherPrefs
 import com.janmurin.dashermobile.InputMode
 import com.janmurin.dashermobile.LanguageModel
@@ -66,19 +73,44 @@ val InterItalic = FontFamily(
 @Composable
 fun SettingsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
+    val projectUrl = "https://github.com/janmurin2/Dasher-Mobile/"
     var selectedLanguage by remember { mutableStateOf(DasherPrefs.getLanguage(context)) }
     var selectedLanguageModel by remember { mutableStateOf(DasherPrefs.getLanguageModel(context)) }
     var selectedInputMode by remember { mutableStateOf(DasherPrefs.getInputMode(context)) }
+    var selectedImeHeightPercent by remember { mutableStateOf(DasherPrefs.getImeHeightPercent(context)) }
+    var selectedMovementSpeedPercent by remember { mutableStateOf(DasherPrefs.getMovementSpeedPercent(context)) }
 
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showLanguageModelDialog by remember { mutableStateOf(false) }
     var showInputModeDialog by remember { mutableStateOf(false) }
+    var showImeHeightDialog by remember { mutableStateOf(false) }
+    var showMovementSpeedDialog by remember { mutableStateOf(false) }
+    var hasKenlmModelForLanguage by remember { mutableStateOf(KenlmModelFiles.hasModel(context, selectedLanguage)) }
+
+    val importKenlmLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val imported = KenlmModelFiles.importModel(context, selectedLanguage, uri)
+        hasKenlmModelForLanguage = KenlmModelFiles.hasModel(context, selectedLanguage)
+        val messageRes = if (imported) R.string.kenlm_import_success else R.string.kenlm_import_failure
+        Toast.makeText(context, context.getString(messageRes), Toast.LENGTH_SHORT).show()
+    }
 
     LaunchedEffect(Unit) {
         selectedLanguage = DasherPrefs.getLanguage(context)
         selectedLanguageModel = DasherPrefs.getLanguageModel(context)
         selectedInputMode = DasherPrefs.getInputMode(context)
+        selectedImeHeightPercent = DasherPrefs.getImeHeightPercent(context)
+        selectedMovementSpeedPercent = DasherPrefs.getMovementSpeedPercent(context)
+        hasKenlmModelForLanguage = KenlmModelFiles.hasModel(context, selectedLanguage)
     }
+
+    LaunchedEffect(selectedLanguage, selectedLanguageModel) {
+        hasKenlmModelForLanguage = KenlmModelFiles.hasModel(context, selectedLanguage)
+    }
+
+    val showKenlmMissingWarning = selectedLanguageModel == LanguageModel.KENLM && !hasKenlmModelForLanguage
 
     Scaffold(
         modifier = Modifier.safeDrawingPadding(),
@@ -105,11 +137,33 @@ fun SettingsScreen(onBack: () -> Unit) {
                         )
                     }
                 },
+                actions = {
+                    IconButton(
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(projectUrl))
+                            context.startActivity(intent)
+                        }
+                    ) {
+                        Icon(
+                            imageVector = ImageVector.vectorResource(id = R.drawable.info_24px),
+                            contentDescription = stringResource(id = R.string.icon_info),
+                            modifier = Modifier.size(24.dp),
+                            tint = Color.White
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = Color.Black,
                     titleContentColor = Color.White
                 )
             )
+        },
+        bottomBar = {
+            if (showKenlmMissingWarning) {
+                KenlmMissingModelBar(
+                    onImportClick = { importKenlmLauncher.launch(arrayOf("*/*")) }
+                )
+            }
         }
     ) { innerPadding ->
         Column(
@@ -130,7 +184,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 iconResId = R.drawable.model_training_24px,
                 iconContentDescription = stringResource(id = R.string.icon_language_model),
                 title = stringResource(id = R.string.settings_language_model),
-                currentValue = if (selectedLanguageModel == LanguageModel.WORD) "Word" else "PPM",
+                currentValue = languageModelLabel(selectedLanguageModel),
                 onClick = { showLanguageModelDialog = true }
             )
             HorizontalDivider(color = Color.Black, thickness = 1.dp)
@@ -140,6 +194,22 @@ fun SettingsScreen(onBack: () -> Unit) {
                 title = stringResource(id = R.string.settings_input_mode),
                 currentValue = if (selectedInputMode == InputMode.TILT) "Tilt" else "Touch",
                 onClick = { showInputModeDialog = true }
+            )
+            HorizontalDivider(color = Color.Black, thickness = 1.dp)
+            SettingRow(
+                iconResId = R.drawable.unfold_more_24px,
+                iconContentDescription = stringResource(id = R.string.icon_ime_size),
+                title = stringResource(id = R.string.settings_ime_size),
+                currentValue = "$selectedImeHeightPercent%",
+                onClick = { showImeHeightDialog = true }
+            )
+            HorizontalDivider(color = Color.Black, thickness = 1.dp)
+            SettingRow(
+                iconResId = R.drawable.speed_24px,
+                iconContentDescription = stringResource(id = R.string.icon_movement_speed),
+                title = stringResource(id = R.string.settings_movement_speed),
+                currentValue = "$selectedMovementSpeedPercent%",
+                onClick = { showMovementSpeedDialog = true }
             )
         }
     }
@@ -178,6 +248,55 @@ fun SettingsScreen(onBack: () -> Unit) {
                 showInputModeDialog = false
             }
         )
+    }
+
+    if (showImeHeightDialog) {
+        ImeHeightDialog(
+            currentPercent = selectedImeHeightPercent,
+            onDismiss = { showImeHeightDialog = false },
+            onSelect = { percent ->
+                DasherPrefs.setImeHeightPercent(context, percent)
+                selectedImeHeightPercent = percent
+                showImeHeightDialog = false
+            }
+        )
+    }
+
+    if (showMovementSpeedDialog) {
+        MovementSpeedDialog(
+            currentPercent = selectedMovementSpeedPercent,
+            onDismiss = { showMovementSpeedDialog = false },
+            onSelect = { percent ->
+                DasherPrefs.setMovementSpeedPercent(context, percent)
+                selectedMovementSpeedPercent = percent
+                showMovementSpeedDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun KenlmMissingModelBar(onImportClick: () -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        HorizontalDivider(color = Color.Black, thickness = 1.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(id = R.string.kenlm_missing_file_warning),
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Black,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Button(onClick = onImportClick) {
+                Text(text = stringResource(id = R.string.kenlm_import_file))
+            }
+        }
     }
 }
 
@@ -276,7 +395,7 @@ private fun LanguageModelDialog(
         title = { Text(text = stringResource(id = R.string.select_language_model)) },
         text = {
             Column {
-                val models = listOf(LanguageModel.PPM, LanguageModel.WORD)
+                val models = listOf(LanguageModel.PPM, LanguageModel.WORD, LanguageModel.KENLM)
                 models.forEach { model ->
                     Row(
                         modifier = Modifier
@@ -290,7 +409,7 @@ private fun LanguageModelDialog(
                             onClick = { onSelect(model) }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = if (model == LanguageModel.WORD) "Word" else "PPM")
+                        Text(text = languageModelLabel(model))
                     }
                 }
             }
@@ -301,6 +420,15 @@ private fun LanguageModelDialog(
             }
         }
     )
+}
+
+@Composable
+private fun languageModelLabel(model: LanguageModel): String {
+    return when (model) {
+        LanguageModel.PPM -> stringResource(id = R.string.language_model_ppm)
+        LanguageModel.WORD -> stringResource(id = R.string.language_model_word)
+        LanguageModel.KENLM -> stringResource(id = R.string.language_model_kenlm)
+    }
 }
 
 @Composable
@@ -352,3 +480,80 @@ private fun InputModeDialog(
         }
     )
 }
+
+@Composable
+private fun ImeHeightDialog(
+    currentPercent: Int,
+    onDismiss: () -> Unit,
+    onSelect: (Int) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = stringResource(id = R.string.select_ime_size)) },
+        text = {
+            Column {
+                val options = listOf(30, 40, 50, 60, 70)
+                options.forEach { percent ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelect(percent) }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = currentPercent == percent,
+                            onClick = { onSelect(percent) }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = "$percent%")
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = stringResource(id = R.string.cancel))
+            }
+        }
+    )
+}
+
+@Composable
+private fun MovementSpeedDialog(
+    currentPercent: Int,
+    onDismiss: () -> Unit,
+    onSelect: (Int) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = stringResource(id = R.string.select_movement_speed)) },
+        text = {
+            Column {
+                val options = listOf(50, 75, 100, 150, 200, 250, 300, 400)
+                options.forEach { percent ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelect(percent) }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = currentPercent == percent,
+                            onClick = { onSelect(percent) }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = "$percent%")
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = stringResource(id = R.string.cancel))
+            }
+        }
+    )
+}
+

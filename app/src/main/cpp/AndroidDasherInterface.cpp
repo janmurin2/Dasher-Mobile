@@ -342,7 +342,7 @@ int AndroidDasherInterface::GetLanguageModelId() const {
 }
 
 void AndroidDasherInterface::SetLanguageModelId(int modelId) {
-    const int resolved = (modelId == 2) ? 2 : 0;
+    const int resolved = (modelId == 0 || modelId == 2 || modelId == 3 || modelId == 4 || modelId == 5) ? modelId : 0;
     if (GetLongParameter(Dasher::LP_LANGUAGE_MODEL_ID) == static_cast<long>(resolved)) {
         return;
     }
@@ -351,6 +351,24 @@ void AndroidDasherInterface::SetLanguageModelId(int modelId) {
         m_startedByTouch = false;
     }
     SetLongParameter(Dasher::LP_LANGUAGE_MODEL_ID, static_cast<long>(resolved));
+}
+
+int AndroidDasherInterface::GetMovementSpeedPercent() const {
+    constexpr double kBaseBitrate = 160.0;
+    const auto bitrate = static_cast<double>(GetLongParameter(Dasher::LP_MAX_BITRATE));
+    const int percent = static_cast<int>(std::lround((bitrate / kBaseBitrate) * 100.0));
+    return std::clamp(percent, 20, 400);
+}
+
+void AndroidDasherInterface::SetMovementSpeedPercent(int percent) {
+    constexpr double kBaseBitrate = 160.0;
+    const int resolvedPercent = std::clamp(percent, 20, 400);
+    const long requested = static_cast<long>(std::lround((resolvedPercent / 100.0) * kBaseBitrate));
+    const long bitrate = std::max(1L, requested);
+    if (GetLongParameter(Dasher::LP_MAX_BITRATE) == bitrate) {
+        return;
+    }
+    SetLongParameter(Dasher::LP_MAX_BITRATE, bitrate);
 }
 
 unsigned int AndroidDasherInterface::ctrlMove(bool, Dasher::EditDistance) {

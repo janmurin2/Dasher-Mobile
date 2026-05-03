@@ -30,7 +30,7 @@ class DasherCanvasView @JvmOverloads constructor(
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
         textAlign = Paint.Align.LEFT
-        typeface = Typeface.DEFAULT_BOLD
+        typeface = Typeface.DEFAULT
     }
 
     private var commands: IntArray = IntArray(0)
@@ -166,7 +166,7 @@ class DasherCanvasView @JvmOverloads constructor(
                 5 -> {
                     val strIdx = d
                     if (strIdx in localStrings.indices) {
-                        val fs = mapR(c).coerceAtLeast(6f)
+                        val fs = (mapR(c) * 2.5f).coerceAtLeast(8f)
                         textPaint.textSize = fs
                         textPaint.color = color
                         val fm = textPaint.fontMetrics
