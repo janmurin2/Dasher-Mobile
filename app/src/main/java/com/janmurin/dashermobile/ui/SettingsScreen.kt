@@ -5,10 +5,12 @@ import android.content.Context
 import android.hardware.Sensor
 import android.hardware.SensorManager
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.defaultMinSize
@@ -18,7 +20,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -50,6 +55,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.janmurin.dashermobile.DasherLanguage
+import com.janmurin.dashermobile.KenlmModelFiles
 import com.janmurin.dashermobile.DasherPrefs
 import com.janmurin.dashermobile.InputMode
 import com.janmurin.dashermobile.LanguageModel
@@ -79,6 +85,17 @@ fun SettingsScreen(onBack: () -> Unit) {
     var showInputModeDialog by remember { mutableStateOf(false) }
     var showImeHeightDialog by remember { mutableStateOf(false) }
     var showMovementSpeedDialog by remember { mutableStateOf(false) }
+    var hasKenlmModelForLanguage by remember { mutableStateOf(KenlmModelFiles.hasModel(context, selectedLanguage)) }
+
+    val importKenlmLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val imported = KenlmModelFiles.importModel(context, selectedLanguage, uri)
+        hasKenlmModelForLanguage = KenlmModelFiles.hasModel(context, selectedLanguage)
+        val messageRes = if (imported) R.string.kenlm_import_success else R.string.kenlm_import_failure
+        Toast.makeText(context, context.getString(messageRes), Toast.LENGTH_SHORT).show()
+    }
 
     LaunchedEffect(Unit) {
         selectedLanguage = DasherPrefs.getLanguage(context)
@@ -86,7 +103,14 @@ fun SettingsScreen(onBack: () -> Unit) {
         selectedInputMode = DasherPrefs.getInputMode(context)
         selectedImeHeightPercent = DasherPrefs.getImeHeightPercent(context)
         selectedMovementSpeedPercent = DasherPrefs.getMovementSpeedPercent(context)
+        hasKenlmModelForLanguage = KenlmModelFiles.hasModel(context, selectedLanguage)
     }
+
+    LaunchedEffect(selectedLanguage, selectedLanguageModel) {
+        hasKenlmModelForLanguage = KenlmModelFiles.hasModel(context, selectedLanguage)
+    }
+
+    val showKenlmMissingWarning = selectedLanguageModel == LanguageModel.KENLM && !hasKenlmModelForLanguage
 
     Scaffold(
         modifier = Modifier.safeDrawingPadding(),
@@ -133,6 +157,13 @@ fun SettingsScreen(onBack: () -> Unit) {
                     titleContentColor = Color.White
                 )
             )
+        },
+        bottomBar = {
+            if (showKenlmMissingWarning) {
+                KenlmMissingModelBar(
+                    onImportClick = { importKenlmLauncher.launch(arrayOf("*/*")) }
+                )
+            }
         }
     ) { innerPadding ->
         Column(
@@ -241,6 +272,31 @@ fun SettingsScreen(onBack: () -> Unit) {
                 showMovementSpeedDialog = false
             }
         )
+    }
+}
+
+@Composable
+private fun KenlmMissingModelBar(onImportClick: () -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        HorizontalDivider(color = Color.Black, thickness = 1.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(id = R.string.kenlm_missing_file_warning),
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Black,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Button(onClick = onImportClick) {
+                Text(text = stringResource(id = R.string.kenlm_import_file))
+            }
+        }
     }
 }
 
