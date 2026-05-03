@@ -1,8 +1,10 @@
 package com.janmurin.dashermobile.ui
 
+import android.content.Intent
 import android.content.Context
 import android.hardware.Sensor
 import android.hardware.SensorManager
+import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -65,6 +67,7 @@ val InterItalic = FontFamily(
 @Composable
 fun SettingsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
+    val projectUrl = "https://github.com/janmurin2/Dasher-Mobile/"
     var selectedLanguage by remember { mutableStateOf(DasherPrefs.getLanguage(context)) }
     var selectedLanguageModel by remember { mutableStateOf(DasherPrefs.getLanguageModel(context)) }
     var selectedInputMode by remember { mutableStateOf(DasherPrefs.getInputMode(context)) }
@@ -105,6 +108,21 @@ fun SettingsScreen(onBack: () -> Unit) {
                         Icon(
                             imageVector = ImageVector.vectorResource(id = R.drawable.arrow_back_24px),
                             contentDescription = stringResource(id = R.string.icon_back),
+                            modifier = Modifier.size(24.dp),
+                            tint = Color.White
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(projectUrl))
+                            context.startActivity(intent)
+                        }
+                    ) {
+                        Icon(
+                            imageVector = ImageVector.vectorResource(id = R.drawable.info_24px),
+                            contentDescription = stringResource(id = R.string.icon_info),
                             modifier = Modifier.size(24.dp),
                             tint = Color.White
                         )
