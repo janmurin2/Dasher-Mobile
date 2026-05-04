@@ -19,7 +19,7 @@ Testovanie prebieha najskôr inštaláciou aplikácie a krátkym oboznámením s
       <img width="270" hspace="20" alt="install" src="https://github.com/user-attachments/assets/c139e7db-070c-456a-9315-121ec4f18857" />
       <img width="270" hspace="20" alt="app_scan" src="https://github.com/user-attachments/assets/0d947b57-857a-4441-8601-c1b623fcaf70" />
     </p>
-   - Po inštalácii sa aplikácia bude zobrazovať pod názvom **Dasher Mobile**.
+   - Po inštalácii sa aplikácia bude zobrazovať pod názvom Dasher Mobile.
 
 2. Stiahni si súbor `kenlm_Slovak.binary` z https://github.com/janmurin2/Dasher-Mobile/releases/tag/v1.0
 
@@ -37,7 +37,7 @@ Testovanie prebieha najskôr inštaláciou aplikácie a krátkym oboznámením s
 
 ### Čo je Dasher?
 
-Dasher je nekonvenčný systém zadávania textu, ktorý využíva plynulú navigáciu v priestore písmen. Celá abeceda je zobrazená ako stĺpec na pravom okraji obrazovky a ty do jednotlivých znakov vrážaš, buď dotykom, alebo náklonom zariadenia. Systém využíva jazykový model na predpovedanie pravdepodobnosti jednotlivých písmen a podľa toho priraďuje väčší priestor tým písmenám, ktoré s najväčšou pravdepodobnosťou nasledujú. Časté kombinácie písmen sú teda väčšie a je lahšie sa do nich trafiť. Pre príklad písania si pozri [Demonstration of Typing with Dasher](https://www.youtube.com/watch?v=nr3s4613DX8).
+Dasher je nekonvenčný systém zadávania textu, ktorý využíva plynulú navigáciu v priestore písmen. Celá abeceda je zobrazená ako stĺpec na pravom okraji obrazovky a ty do jednotlivých znakov vrážaš, buď dotykom, alebo náklonom zariadenia. Systém využíva jazykový model na predpovedanie pravdepodobnosti jednotlivých písmen a podľa toho priraďuje väčší priestor tým písmenám, ktoré s najväčšou pravdepodobnosťou nasledujú. Časté kombinácie písmen sú teda väčšie a je ľahšie sa do nich trafiť. Pre príklad písania si pozri [Demonstration of Typing with Dasher](https://www.youtube.com/watch?v=nr3s4613DX8).
 
 <p align="center">
   <img width="270" hspace="20" alt="ahoj" src="https://github.com/user-attachments/assets/1c99cb52-9558-4488-84dd-e7f04da7735d" />
@@ -73,7 +73,7 @@ Dasher Mobile podporuje dva režimy ovládania:
 
 1. Nainštaluj si aplikáciu podľa návodu vyššie a prečítaj si odsek na oboznámenie sa s Dasher klávesnicou.
 
-2. Vyhrať si čas na **dvanásť 5-minútových blokov** testovania. Nemusí to byť naraz, pokojne aj v priebehu viacerých dní, ale najneskôr do piatku 8.5.2026 12:00. Mimo týchto testovacích blokov prosím aplikáciu nepoužívaj, budem vyhodnocovať aj postupné zlepšenie rýchlosti a presnosti písania.
+2. Vyhraď si čas na **dvanásť 5-minútových blokov** testovania. Nemusí to byť naraz, pokojne aj v priebehu viacerých dní, ale najneskôr do piatku 8.5.2026 12:00. Mimo týchto testovacích blokov prosím aplikáciu nepoužívaj, budem vyhodnocovať aj postupné zlepšenie rýchlosti a presnosti písania.
    - Nastav si časovač na 5 minút.
    - Otvor si na inom zariadení text na prepisovanie, prípadne si ho vytlač. Texty nájdeš [tu](https://github.com/janmurin2/Dasher-Mobile/tree/master/docs/sampled_sentences_sk). Vyber text s číslom podľa poradia testovacieho bloku.
    - V nastaveniach vyber 
@@ -83,7 +83,7 @@ Dasher Mobile podporuje dva režimy ovládania:
 	    - movement speed: nastav podľa seba, ale odporúčam na začiatok hodnotu 100% 
    - Spusti časovač a začni prepisovať text.
    - Po uplynutí 5 minút skopíruj napísaný text.
-   - Prilep skopírovaný text do tela mailu, ktorý pošleš na adresu **janko.murin.bb@gmail.com**. Ako predmet napíš, v poradí koľký blok testovania je toto, a zvolenú rýchlosť v nastaveniach (movement speed).
+   - Prilep skopírovaný text do tela mailu, ktorý pošleš na adresu **janko.murin.bb@gmail.com**. Ako predmet napíš poradie testovacieho bloku a zvolenú rýchlosť v nastaveniach (movement speed).
 
 3. Napíš mi prosím krátku **spätnú väzbu** do mailu **janko.murin.bb@gmail.com**:
    - Pocity z používania Dasher klávesnice?
