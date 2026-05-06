@@ -13,6 +13,33 @@ import kotlin.math.max
 import kotlin.math.min
 import android.annotation.SuppressLint
 
+/**
+ * Custom [View] that renders a Dasher frame from the flat integer draw-command buffer
+ * produced by [com.janmurin.dashermobile.NativeBridge.nativeFrame].
+ *
+ * ## Draw-command format
+ * Each frame is a flat [IntArray] of 6-integer records `[op, a, b, c, d, argb]`:
+ * | op | Primitive | Parameters |
+ * |----|-----------|-----------|
+ * | 0  | Clear canvas | – |
+ * | 1  | Circle | cx=a, cy=b, r=c, filled=(d≠0) |
+ * | 2  | Line | x1=a, y1=b, x2=c, y2=d |
+ * | 3  | Stroked rect | x1=a, y1=b, x2=c, y2=d |
+ * | 4  | Filled rect  | x1=a, y1=b, x2=c, y2=d |
+ * | 5  | Text | x=a, y=b, fontSize=c, stringIndex=d |
+ *
+ * ## Coordinate normalisation
+ * If the coordinate bounds of the incoming commands fall entirely outside the view, or span
+ * an area more than 4× larger than the view, the commands are linearly scaled and translated
+ * to fill the view.  This ensures Dasher content is always visible even when screen-space
+ * coordinates diverge from view pixels (e.g. during engine warm-up).
+ *
+ * ## Pause overlay
+ * When [showPauseOverlay] is `true` a semi-transparent grey overlay is drawn on top of the
+ * last rendered frame to indicate that Dasher is paused.
+ *
+ * @see com.janmurin.dashermobile.DasherEngine
+ */
 class DasherCanvasView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
@@ -37,10 +64,31 @@ class DasherCanvasView @JvmOverloads constructor(
     private var strings: Array<String> = emptyArray()
     private var drawCount = 0
 
+    /**
+     * When `true` a semi-transparent grey overlay is drawn over the canvas to signal
+     * that the Dasher engine is paused.
+     */
     var showPauseOverlay: Boolean = false
+
+    /**
+     * Called when the view's pixel dimensions change (first layout, orientation change, etc.).
+     * Receives the new width and height in pixels.  Wire this to
+     * [com.janmurin.dashermobile.DasherSessionCoordinator.onSurfaceSizeChanged].
+     */
     var onSurfaceSizeChanged: ((Int, Int) -> Unit)? = null
+
+    /**
+     * Called on every touch event with `(action, x, y)` where action follows Android's
+     * `MotionEvent` convention: 0 = DOWN, 1 = MOVE, 2 = UP/CANCEL.
+     */
     var onTouchInput: ((Int, Float, Float) -> Unit)? = null
 
+    /**
+     * Accepts a new frame to render and schedules a redraw on the next animation frame.
+     *
+     * @param frameCommands Flat draw-command array from [com.janmurin.dashermobile.NativeBridge.nativeFrame].
+     * @param frameStrings  String labels from [com.janmurin.dashermobile.NativeBridge.nativeGetFrameStrings].
+     */
     fun submitFrame(frameCommands: IntArray, frameStrings: Array<String> = emptyArray()) {
         commands = frameCommands
         strings = frameStrings

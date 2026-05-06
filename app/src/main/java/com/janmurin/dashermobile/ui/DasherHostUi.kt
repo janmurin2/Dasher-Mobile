@@ -24,6 +24,27 @@ import androidx.core.view.updatePadding
 import com.janmurin.dashermobile.HostMode
 import com.janmurin.dashermobile.R
 
+/**
+ * Aggregates all live [android.view.View] references that make up a Dasher host UI.
+ *
+ * Created by [DasherHostUi.create] and held by the owning host
+ * ([com.janmurin.dashermobile.MainActivity] or
+ * [com.janmurin.dashermobile.DasherImeService]).  Views that are only present in one
+ * host mode (e.g. [modeSwitch] in APP mode) are nullable.
+ *
+ * @property root                 The top-level view returned to `setContentView` / `onCreateInputView`.
+ * @property canvasView           The [DasherCanvasView] that renders Dasher frames.
+ * @property outputView           [android.widget.TextView] displaying the accumulated output text.
+ * @property statusView           [android.widget.TextView] showing the current mode/state label.
+ * @property modeSwitch           Toggle switch between TOUCH and TILT input; `null` in compact mode
+ *                                when the host does not expose tilt controls.
+ * @property calibrateButton      Button to calibrate the tilt baseline; `null` when not applicable.
+ * @property languageSpinner      Spinner for selecting the active [com.janmurin.dashermobile.DasherLanguage]; may be `null`.
+ * @property languageModelSpinner Spinner for selecting the [com.janmurin.dashermobile.LanguageModel]; may be `null`.
+ * @property settingsButton       Button that opens [com.janmurin.dashermobile.SettingsActivity]; `null` in IME mode.
+ * @property canvasFrame          [android.widget.FrameLayout] that wraps [canvasView] and any overlay views.
+ * @property canvasCalibrateButton Calibrate button overlaid on the canvas (visible in TILT+paused state).
+ */
 data class DasherHostViews(
     val root: View,
     val canvasView: DasherCanvasView,
@@ -38,7 +59,26 @@ data class DasherHostViews(
     val canvasCalibrateButton: Button
 )
 
+/**
+ * Factory object that programmatically builds the complete Dasher host UI.
+ *
+ * The UI is created entirely in code (no XML layouts) so it can be shared between the
+ * standalone [com.janmurin.dashermobile.MainActivity] and the IME
+ * [com.janmurin.dashermobile.DasherImeService] with layout differences controlled by
+ * [com.janmurin.dashermobile.HostMode].
+ */
 object DasherHostUi {
+    /**
+     * Builds and returns all host UI views wrapped in a [DasherHostViews].
+     *
+     * Callers are responsible for adding [DasherHostViews.root] to a window
+     * (`setContentView` in an Activity, or returning it from `onCreateInputView`
+     * in an `InputMethodService`).
+     *
+     * @param context  Android context used to inflate views and resolve resources.
+     * @param hostMode Controls layout compactness and which optional controls are included.
+     * @return Fully initialised [DasherHostViews].
+     */
     fun create(context: Context, hostMode: HostMode): DasherHostViews {
         val density = context.resources.displayMetrics.density
         fun dp(value: Int): Int = (value * density).toInt()

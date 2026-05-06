@@ -12,6 +12,24 @@ import android.widget.LinearLayout
 import com.janmurin.dashermobile.ui.DasherHostUi
 import com.janmurin.dashermobile.ui.DasherHostViews
 
+/**
+ * Android Input Method Service that presents the Dasher keyboard to host applications.
+ *
+ * ## Lifecycle overview
+ * ```
+ * onCreateInputView  → registers with DasherSessionCoordinator, wires callbacks
+ * onStartInputView   → activates the host, resets text buffer, starts frame loop
+ * onFinishInputView  → pauses + deactivates + discards native runtime
+ * onDestroy          → unregisters host, releases tilt sensor
+ * ```
+ *
+ * ## Key responsibilities
+ * - Creates the Dasher UI via [com.janmurin.dashermobile.ui.DasherHostUi] in compact IME mode.
+ * - Routes rendered frames to [com.janmurin.dashermobile.ui.DasherCanvasView].
+ * - Bridges DasherCore output text to the target editor via [DasherImeTextSink].
+ * - Manages the [TiltInputProvider] sensor registration in sync with visibility and mode.
+ * - Persists and restores language, language-model and input-mode preferences via [DasherPrefs].
+ */
 class DasherImeService : InputMethodService() {
 
     companion object {

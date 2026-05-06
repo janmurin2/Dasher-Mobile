@@ -1,3 +1,17 @@
+/**
+ * @file AndroidDasherInterface.cpp
+ * @brief Android-specific Dasher rendering and input implementation.
+ *
+ * Contains:
+ * - @c toArgb / @c isUsableColor – colour conversion helpers.
+ * - @c AndroidPointerInput – translates touch coordinates into the @c CScreenCoordInput
+ *   interface expected by DasherCore.
+ * - @c AndroidCommandScreen – a @c CDasherScreen implementation that records every drawing
+ *   call as a flat integer command buffer instead of rasterising pixels.  The buffer is
+ *   transferred across the JNI boundary each frame and rendered in Kotlin by DasherCanvasView.
+ * - @c AndroidDasherInterface – the top-level interface combining settings, screen and input.
+ */
+
 #include "AndroidDasherInterface.h"
 
 #include "DasherCore/DasherInput.h"
@@ -15,6 +29,16 @@
 
 #define LOG_TAG "DasherInterface"
 
+/**
+ * @brief Converts a DasherCore colour to an ARGB packed integer.
+ *
+ * Handles both floating-point [0, 1] and integer [0, 255] colour component conventions.
+ * Near-transparent alpha values (> 0 but < 24) are promoted to fully opaque to avoid
+ * invisible rendering artefacts on the Android canvas.
+ *
+ * @param color DasherCore colour value.
+ * @return 32-bit ARGB packed integer (A in bits 31–24, R in 23–16, G in 15–8, B in 7–0).
+ */
 static int32_t toArgb(const Dasher::ColorPalette::Color &color) {
     int a = color.Alpha;
     int r = color.Red;
@@ -41,6 +65,15 @@ static int32_t toArgb(const Dasher::ColorPalette::Color &color) {
     return static_cast<int32_t>((a << 24) | (r << 16) | (g << 8) | b);
 }
 
+/**
+ * @brief Returns @c true when a DasherCore colour is valid and non-transparent.
+ *
+ * Rejects colours with any negative component (sentinel "unset" value used by DasherCore)
+ * and fully transparent colours (alpha == 0).
+ *
+ * @param color Colour to test.
+ * @return @c true if the colour should be drawn.
+ */
 static bool isUsableColor(const Dasher::ColorPalette::Color &color) {
     if (color.Red < 0 || color.Green < 0 || color.Blue < 0 || color.Alpha < 0) {
         return false;
@@ -48,10 +81,25 @@ static bool isUsableColor(const Dasher::ColorPalette::Color &color) {
     return color.Alpha > 0;
 }
 
+/**
+ * @brief DasherCore input module that maps Android touch events to screen coordinates.
+ *
+ * Implements @c CScreenCoordInput so it can be registered with DasherCore's module manager.
+ * Coordinates are clamped to the current surface bounds.  While no touch is active the
+ * cursor is parked at the centre of the surface.
+ */
 class AndroidPointerInput : public Dasher::CScreenCoordInput {
 public:
     AndroidPointerInput() : Dasher::CScreenCoordInput("Android Touch Input") {}
 
+    /**
+     * @brief Updates the known surface dimensions.
+     *
+     * When no touch is active the cursor is repositioned to the new centre.
+     *
+     * @param width  Surface width in pixels (clamped to a minimum of 1).
+     * @param height Surface height in pixels (clamped to a minimum of 1).
+     */
     void SetBounds(int width, int height) {
         m_width = std::max(1, width);
         m_height = std::max(1, height);
@@ -61,6 +109,13 @@ public:
         }
     }
 
+    /**
+     * @brief Delivers a touch event and updates the current cursor position.
+     *
+     * @param action 0 = down (touch active), 1 = move, 2 = up/cancel (touch released).
+     * @param x      Raw X coordinate; clamped to [0, width-1].
+     * @param y      Raw Y coordinate; clamped to [0, height-1].
+     */
     void SetTouch(int action, float x, float y) {
         if (action == 0) {
             m_hasTouch = true;
@@ -74,6 +129,7 @@ public:
         m_y = std::clamp(static_cast<int>(std::lround(y)), 0, maxY);
     }
 
+    /// @brief Returns the current clamped cursor position. Always returns @c true.
     bool GetScreenCoords(Dasher::screenint &iX, Dasher::screenint &iY, Dasher::CDasherView *) override {
         iX = static_cast<Dasher::screenint>(m_x);
         iY = static_cast<Dasher::screenint>(m_y);
@@ -81,36 +137,76 @@ public:
     }
 
 private:
-    int m_width = 1;
-    int m_height = 1;
-    int m_x = 0;
-    int m_y = 0;
-    bool m_hasTouch = false;
+    int m_width = 1;    ///< Current surface width.
+    int m_height = 1;   ///< Current surface height.
+    int m_x = 0;        ///< Current cursor X (clamped).
+    int m_y = 0;        ///< Current cursor Y (clamped).
+    bool m_hasTouch = false; ///< @c true while a finger is down.
 };
 
+/**
+ * @brief A @c CDasherScreen that records drawing calls as a flat integer command buffer.
+ *
+ * Instead of rasterising pixels, every drawing primitive is serialised as a 6-element
+ * record @c [op, a, b, c, d, argb] appended to an internal @c std::vector<int32_t>.
+ * The buffer is drained once per frame via @ref TakeCommands and sent across the JNI
+ * boundary to the Kotlin rendering layer.
+ *
+ * String labels (op = 5) are stored in a parallel @c std::vector<std::string>; the @c d
+ * field of the draw-command record carries the string's index into that vector.
+ */
 class AndroidCommandScreen final : public Dasher::CDasherScreen {
 public:
+    /**
+     * @param width  Initial surface width in pixels.
+     * @param height Initial surface height in pixels.
+     */
     AndroidCommandScreen(int width, int height)
         : Dasher::CDasherScreen(static_cast<Dasher::screenint>(width), static_cast<Dasher::screenint>(height)) {}
 
+    /**
+     * @brief Resizes the screen and notifies DasherCore.
+     * @param width  New width in pixels.
+     * @param height New height in pixels.
+     */
     void SetSize(int width, int height) {
         resize(static_cast<Dasher::screenint>(width), static_cast<Dasher::screenint>(height));
     }
 
+    /**
+     * @brief Clears the command and string buffers and emits a canvas-clear command.
+     *
+     * Must be called once at the start of each frame before DasherCore calls any draw methods.
+     * The background colour used is @c #0D1117 (dark navy), fully opaque.
+     */
     void BeginFrame() {
         m_commands.clear();
         m_strings.clear();
         push(0, 0, 0, 0, 0, static_cast<int32_t>(0xFF0D1117));
     }
 
+    /**
+     * @brief Returns and clears the accumulated draw-command buffer.
+     * @return Flat command array (multiples of 6 elements).
+     */
     std::vector<int32_t> TakeCommands() {
         return std::move(m_commands);
     }
 
+    /**
+     * @brief Returns and clears the accumulated string label buffer.
+     * @return Strings in the order they were emitted by @c DrawString.
+     */
     std::vector<std::string> TakeStrings() {
         return std::move(m_strings);
     }
 
+    /**
+     * @brief Estimates the rendered size of a text label.
+     *
+     * Uses a simple proportional approximation (width = char count * fontSize / 2) since
+     * the actual font metrics are unknown at the native layer.
+     */
     std::pair<Dasher::screenint, Dasher::screenint> TextSize(Label *label, unsigned int iFontSize) override {
         if (!label) return {0, 0};
         const int width = static_cast<int>(label->m_strText.size()) * static_cast<int>(iFontSize) / 2;
@@ -137,6 +233,12 @@ public:
         }
     }
 
+    /**
+     * @brief Records a rectangle draw command (filled and/or outlined).
+     *
+     * Emits op=4 (filled rect) when @p color is usable, and op=3 (stroked rect)
+     * when @p outlineColor is usable and @p iThickness > 0.
+     */
     void DrawRectangle(Dasher::screenint x1,
                        Dasher::screenint y1,
                        Dasher::screenint x2,
@@ -152,6 +254,11 @@ public:
         }
     }
 
+    /**
+     * @brief Records a circle draw command (filled and/or outlined).
+     *
+     * Emits op=1 with @c d=1 for a filled circle and op=1 with @c d=0 for an outline circle.
+     */
     void DrawCircle(Dasher::screenint iCX,
                     Dasher::screenint iCY,
                     Dasher::screenint iR,
@@ -166,6 +273,12 @@ public:
         }
     }
 
+    /**
+     * @brief Records a polyline as a sequence of op=2 (line) commands.
+     *
+     * @param Points Pointer to an array of @p Number points.
+     * @param Number Number of points; must be ≥ 2 to emit any commands.
+     */
     void Polyline(Dasher::point *Points,
                   int Number,
                   int,
@@ -177,6 +290,12 @@ public:
         }
     }
 
+    /**
+     * @brief Records a polygon outline as a sequence of op=2 (line) commands.
+     *
+     * Only the outline is drawn (fill colour is ignored).  The closing edge from the last
+     * point back to the first is added automatically.
+     */
     void Polygon(Dasher::point *Points,
                  int Number,
                  const Dasher::ColorPalette::Color &,
@@ -190,13 +309,22 @@ public:
         push(2, Points[Number - 1].x, Points[Number - 1].y, Points[0].x, Points[0].y, argb);
     }
 
+    /// @brief No-op: the command buffer is already "displayed" by being drained each frame.
     void Display() override {}
 
+    /// @brief Always returns @c true; clipping is handled on the Kotlin side.
     bool IsPointVisible(Dasher::screenint, Dasher::screenint) override {
         return true;
     }
 
 private:
+    /**
+     * @brief Appends a 6-element draw-command record to @ref m_commands.
+     *
+     * @param op    Primitive opcode (0–5).
+     * @param a–d   Primitive parameters (interpretation depends on @p op).
+     * @param color Packed ARGB colour from @ref toArgb.
+     */
     void push(int op, int a, int b, int c, int d, int32_t color) {
         m_commands.push_back(op);
         m_commands.push_back(a);
@@ -206,12 +334,16 @@ private:
         m_commands.push_back(color);
     }
 
-    std::vector<int32_t> m_commands;
-    std::vector<std::string> m_strings;
+    std::vector<int32_t> m_commands;   ///< Flat draw-command buffer, drained each frame.
+    std::vector<std::string> m_strings; ///< String label buffer, drained each frame.
 };
 
 namespace {
 
+/**
+ * @brief Returns the current time as a millisecond timestamp (monotonic clock).
+ * @return Milliseconds since an arbitrary epoch, suitable for passing to DasherCore.
+ */
 unsigned long nowMs() {
     const auto now = std::chrono::steady_clock::now().time_since_epoch();
     return static_cast<unsigned long>(std::chrono::duration_cast<std::chrono::milliseconds>(now).count());

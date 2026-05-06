@@ -14,6 +14,25 @@ import androidx.core.content.res.ResourcesCompat
 import com.janmurin.dashermobile.ui.DasherCanvasView
 import com.janmurin.dashermobile.ui.DasherHostUi
 
+/**
+ * Standalone full-screen activity that hosts the Dasher writing interface.
+ *
+ * ## Lifecycle overview
+ * ```
+ * onCreate  → registers with DasherSessionCoordinator, builds the UI, wires callbacks
+ * onResume  → activates the host, starts the frame loop, optionally restores tilt mode
+ * onPause   → requests pause, deactivates the host
+ * onDestroy → unregisters the host, releases tilt sensor
+ * ```
+ *
+ * ## Features beyond the IME
+ * - Full-resolution landscape/portrait layout with larger text and controls.
+ * - `FLAG_KEEP_SCREEN_ON` is set while tilt mode is active to prevent the screen from
+ *   dimming during hands-free use.
+ * - Startup tilt restore: if the user last closed the app in tilt mode the activity will
+ *   automatically switch back to tilt and calibrate after the surface is ready.
+ * - Opens [SettingsActivity] when the settings button is tapped.
+ */
 class MainActivity : ComponentActivity() {
 
     private var hostHandle: DasherSessionCoordinator.HostHandle? = null
