@@ -1,0 +1,77 @@
+@startuml
+skinparam defaultFontName Monospaced
+skinparam defaultFontSize 11
+skinparam backgroundColor white
+skinparam roundCorner 10
+skinparam shadowing false
+skinparam ArrowColor #444444
+skinparam ArrowThickness 1.3
+skinparam nodesep 45
+skinparam ranksep 40
+
+skinparam rectangle {
+  BorderThickness 1.4
+  BackgroundColor<<host>>   #D6E4FF
+  BorderColor<<host>>       #5B8DEF
+  BackgroundColor<<coord>>  #FFE5B4
+  BorderColor<<coord>>      #E6A020
+  BackgroundColor<<engine>> #D4EDDA
+  BorderColor<<engine>>     #3D9A50
+  backGroundColor<<bridge>> #FFF9C4
+  BorderColor<<bridge>>     #C8A800
+  BackgroundColor<<core>>   #FDDCDC
+  BorderColor<<core>>       #D94040
+  BackgroundColor<<io>>     #E8D5F5
+  BorderColor<<io>>         #7B3FA0
+  BackgroundColor<<sensor>> #CCEFF5
+  BorderColor<<sensor>>     #1A9BB0
+  BackgroundColor<<util>>   #ECECEC
+  BorderColor<<util>>       #777777
+}
+
+package "Android / Kotlin" {
+  rectangle "MainActivity" <<host>> as MAIN
+  rectangle "DasherImeService" <<host>> as IME
+  rectangle "TiltInputProvider" <<sensor>> as TILT
+  rectangle "DasherPrefs" <<util>> as PREFS
+  rectangle "DasherSessionCoordinator" <<coord>> as COORD
+  rectangle "DasherEngine" <<engine>> as ENGINE
+  rectangle "NativeBridge" <<bridge>> as BRIDGE
+  rectangle "DasherCanvasView" <<io>> as CANVAS
+  rectangle "DasherImeTextSink" <<io>> as SINK
+  rectangle "InputConnection" <<util>> as IC
+  rectangle "KenlmModelFiles" <<util>> as KENLM
+}
+
+package "Native / C++" {
+  rectangle "jni_bridge.cpp" <<bridge>> as JNI
+  rectangle "AndroidDasherInterface\nAndroidFileUtils" <<core>> as ADI
+  rectangle "DasherCore" <<core>> as CORE
+}
+
+MAIN --> COORD : register / activate
+IME --> COORD : register / activate
+PREFS ..> MAIN : read/write settings
+PREFS ..> IME  : read/write settings
+
+TILT --> MAIN : normalized tilt
+TILT --> IME  : normalized tilt
+MAIN --> COORD : onTiltNormalized(handle, x, y)
+IME  --> COORD : onTiltNormalized(handle, x, y)
+
+COORD --> ENGINE : owns one active engine\nbinds active host callbacks
+
+ENGINE --> BRIDGE : native* calls
+BRIDGE <--> JNI   : JNI boundary
+JNI    --> ADI    : NativeSession.iface
+ADI    --> CORE   : core APIs
+
+ENGINE ..> CANVAS : frameConsumer
+ENGINE ..> MAIN   : host text/status callbacks
+ENGINE ..> IME    : host text/status callbacks
+IME --> SINK      : onTextChanged
+SINK --> IC       : commit/delete text
+
+KENLM ..> ADI : model files in filesDir
+@enduml
+
